@@ -1084,7 +1084,7 @@ filtering running directly on top of `dnsmasq`:
 
 ## Local Share Subsystem (LAN Direct Transfer & In-Memory/Disk Streaming Engine)
 
-The Local Share subsystem (`quota/local_share.py`, `web/share.html`, and the dashboard's Share page `web/js/pages/share.js` + `shareLive.js` + `core/live.js`) provides a high-speed, private, zero-configuration local file and text/clipboard sharing portal across any client device (smartphones, PCs, laptops, tablets, and smart TVs) connected to the local home network.
+The Local Share subsystem (`quota/local_share.py`, `web/share.html`, and the dashboard's Share page `frontend/src/pages/Share.tsx` + `lib/liveTransfer.ts`) provides a high-speed, private, zero-configuration local file and text/clipboard sharing portal across any client device (smartphones, PCs, laptops, tablets, and smart TVs) connected to the local home network.
 
 ### 1. Architectural Highlights & Zero-Dependency Streaming
 
@@ -1228,11 +1228,11 @@ When a new device connects to the network as a guest before administrative appro
 
 ## The dashboard (web UI)
 
-Served at `/` (old `/ui/...` paths answer `307` to the root). Since 0.6 the shell and the
-main pages are **React 18 + TypeScript**, built by **Vite** into static files that the
+Served at `/` (old `/ui/...` paths answer `307` to the root). Since 0.6 the whole
+dashboard is **React 18 + TypeScript**, built by **Vite** into static files that the
 Python server serves. **Node is a build tool only** — the gateway never runs Node.
-Pages that are not migrated yet are the original vanilla ES modules, hosted inside the
-React shell (progressive migration, see below).
+The migration was done page by page (each vanilla page was hosted inside the React
+shell until its React version replaced it); `web/js/` now only keeps the dictionaries.
 
 ```
 frontend/                 source (npm, Vite, Tailwind v4, Radix primitives, TanStack Query, dnd-kit)
@@ -1240,7 +1240,8 @@ frontend/                 source (npm, Vite, Tailwind v4, Radix primitives, TanS
   src/shell/              App (login + 2FA, layout, title-bar action slot, connection banner,
                           help glossary), Sidebar (+ SortableNav, lazy), routes (lazy chunks,
                           prefetch, saved order), Welcome (first-run, 2 steps)
-  src/pages/              Overview, People, Quota, Network, Insights, System, Legacy (host)
+  src/pages/              Overview, People, Quota, Insights, Internet, Network, VPN, Security,
+                          Share, System (+ SystemTabs: account, updates, logs)
   src/components/ui/      design-system parts: primitives (Button, IconButton, Badge, Meter,
                           Card, Banner, Term, KV, Stat, Loading/Empty), forms (Field, TextField,
                           NumberField, Segmented, Select, Combobox, Switch/SwitchRow), slider,
@@ -1252,9 +1253,9 @@ frontend/                 source (npm, Vite, Tailwind v4, Radix primitives, TanS
                           fallback, hidden-tab buffering), actions (non-optimistic mutations),
                           queries, prefs, i18n bridge, format, types
 web/index.html + web/app/ BUILD OUTPUT (committed): hashed files + .gz twins
-web/css/tokens.css        the ONE token file (React + legacy), web/css/legacy.css (layered)
-web/js/                   vanilla pages still in use: internet, security, vpn, share,
-                          systemTabs (+ their helpers), i18n/en.js + ar.js (shared dictionaries)
+web/css/tokens.css        the ONE token file
+web/js/i18n/              en.js + ar.js (the dictionaries, AR/EN parity tested)
+web/404.html              server-side "page not found" (static, bilingual)
 ```
 
 **Build**: `cd frontend && npm ci && npm run build` writes `web/index.html` and
@@ -1270,8 +1271,7 @@ gateway on 8080 and `npm run dev` (Vite proxies `/api`, `/ws`, `/js`, `/css`, `/
 input borders, ≥3:1), 3 text tiers, one calm slate-blue accent ramp
 `--accent-50…900` (light uses 600 for buttons, dark 400), semantic
 `--success/--warning/--danger/--info` (+ `-soft` chip backgrounds) and a 6-hue
-chart ramp. Legacy variable names (`--bg`, `--surface`, `--text-2`, `--accent-2`…)
-are aliases of the semantic tokens, so hosted vanilla pages share the palette.
+chart ramp. (The legacy variable aliases were removed once the last vanilla page was migrated.)
 `tests/test_design_tokens.py` computes the real WCAG contrast of every text/state
 pair in both themes (AA), focus/borders/chart marks (3:1) and the dark elevation
 ladder. Tailwind maps the tokens (`bg-surface`, `text-fg-2`, `border-line-strong`,
@@ -1326,16 +1326,13 @@ browser as `{v:1, groups:{…}}` of stable route IDs in the existing prefs key
 (`qm.ui.prefs.v2`); new routes slot into their default place; one-click reset.
 Collapsed rail = icons with tooltips. Phones get a drawer.
 
-### Progressive migration (legacy host)
-`pages/Legacy.tsx` imports `/js/pages/<id>.js?v=N` on demand and mounts it with
-the same `ctx` contract (`dashboard, live, getDashboard, refresh, rerender, touch`).
-The shared core modules (`/js/core/i18n.js`, `/js/components/drawer.js`) MUST be
-imported by the exact URL the pages use (no `?v=`), or the browser creates a
-second instance and the page ignores the language switch (regression-tested).
-`web/css/legacy.css` puts the old CSS in the `legacy` cascade layer: above
-Tailwind's reset, below components/utilities. Migrate a page = write
-`frontend/src/pages/X.tsx`, switch its route in `shell/routes.ts`, delete the
-vanilla file, bump nothing else.
+### Device-to-device transfer (`frontend/src/lib/liveTransfer.ts`)
+TypeScript port of the previous engine, same wire protocol as the public `/share` portal (JSON
+control + 16-byte-id binary frames over `/api/share/live/ws`, receivers stream from
+`/api/share/live/download/<id>`, multi-file sends as a streaming ZIP with CRC-32). The overlay
+(`shell/TransferOverlay.tsx`) is mounted outside the routed page and starts the engine after
+sign-in, so an incoming request pops up on any page; both load as their own chunk after the
+first paint. Peers on the same IP as this browser are hidden (same device).
 
 ### Performance and caching
 - First paint loads the shell chunk (~104 KB gzip), one dictionary (~20 KB) and
@@ -1361,6 +1358,35 @@ vanilla file, bump nothing else.
   both; heap flat over a 3-minute soak (9.5 MB). Server snapshot
   (`/api/dashboard`): 8.5 ms at 0 devices, 10.7 ms / 145 KB at 100.
 
+### Passkeys (`quota/passkeys.py`)
+WebAuthn via `py_webauthn` (`webauthn` in `requirements-linux.txt`). Registration asks for a
+**platform** authenticator, a discoverable credential and **required user verification**, so a
+passkey is Face ID / Touch ID / Windows Hello / an Android screen lock on the device itself; the
+private key never leaves it. The gateway stores `{id, public_key, sign_count, rp_id, name,
+created, last_used, backed_up}` as JSON in `settings.passkeys` (DB, survives updates).
+Challenges live in memory for 120 s, are single-use and bound to the request's rp id + origin.
+**Constraint**: the relying-party id must be a *name* and the page a secure context —
+`localhost` or an HTTPS hostname (e.g. the Tailscale address). A bare IP such as
+`http://192.168.2.1:8080` can never use passkeys (browser rule); the API reports
+`reason: ip-address | not-https`, and the Account card explains what to do. A passkey works only
+on the address (rp id) it was created on. A passkey sign-in counts as two factors (device +
+biometric/PIN) and skips the TOTP step. If the `webauthn` package is missing (folder-copy update
+without `pip install`), the import is optional: the gateway boots, `/api/passkeys` says
+`server-missing`. Tests: `tests/test_passkeys.py` runs real ceremonies with a software ES256
+authenticator (register, sign in, counter, replay, wrong origin, UV missing, removed key, IP host).
+
+### Error, empty and offline states
+- `components/ui/Illustration.tsx`: one family of line-art spot illustrations (tokens only, no
+  files); `Empty` picks the illustration for its icon automatically, so every empty list has art,
+  an explanation and a next step.
+- `components/ui/ErrorView.tsx`: `PageErrorBoundary` wraps every routed page (a crash keeps the
+  shell, sheets and banners alive; Retry / Go to Overview / copyable details). A failed lazy chunk
+  after an update shows "A newer version was installed → Reload" instead of a crash. Unknown
+  `#/…` routes show an in-app 404.
+- Boot: when `/api/me` fails at the network level the shell shows "Can't reach the gateway"
+  with checks and a 10 s auto-retry instead of the login form.
+- Server: `web/404.html` (static, bilingual, no script) is what Starlette serves for unknown paths.
+
 ### Lessons learned (0.6)
 - Tailwind 4.0.0's Vite plugin crashed on `@layer` + `@theme inline`; 4.1.x works.
 - A sheet's form state must be created when the item exists (mount the body keyed
@@ -1369,7 +1395,7 @@ vanilla file, bump nothing else.
 
 **Tests**: `tests/test_new_ui.py` (serving, immutable+gzip assets, CSP-clean, no
 external URLs, no raw-HTML sinks, AR↔EN parity, every key used exists, draft and
-keyboard contracts, non-optimistic actions, legacy host), `tests/test_design_tokens.py`
+keyboard contracts, non-optimistic actions, transfer engine), `tests/test_design_tokens.py`
 (contrast), `frontend/src/**/*.test.ts` (Vitest: number parsing, sidebar order merge,
 renewal mapping, prefs migration, identifiers, chart helpers).
 
@@ -1843,6 +1869,10 @@ sets a session cookie. The dashboard client uses the same endpoints.
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/dashboard` | full bundle + users + devices + usage snapshot |
+| GET | `/api/passkeys` | the admin's passkeys (name, rp_id, created, last used, synced) + `usable_here`/`reason` for this address (never key material) |
+| POST | `/api/passkeys/register/options` · `/register/verify` | create a passkey on THIS device (signed-in admin; platform authenticator, user verification required) |
+| PATCH/DELETE | `/api/passkeys/{id}` | rename / remove a passkey |
+| POST | `/api/passkeys/login/options` · `/login/verify` | sign in with a passkey (no password, no TOTP step; shares the login rate limiter and failed-login log) |
 | GET/POST/PATCH/DELETE | `/api/users` & `/api/users/{id}` | list / create / update / delete users (allowance, block, speed caps; `exempt_quota: true` lifts the quota gate — the user is never quota-blocked, manual admin cuts still apply). **DELETE `?blacklist=true` blacklists every device MAC it owns** (permanent deny list — see the quota-model section), while `?blacklist=false` kicks them for 5s without blacklist |
 | POST | `/api/users/{id}/kick` | kick/disconnect all devices owned by user for 5s (flushes lease & drops state; device can reconnect) |
 | POST | `/api/users/{id}/block-blacklist` | permanently block and blacklist all device MACs owned by user |
@@ -2012,10 +2042,8 @@ QuotaManager/
 ├── web/
 │   ├── index.html            # BUILT entry (from frontend/index.html)
 │   ├── app/                  # BUILT hashed chunks + .gz twins (served immutable)
-│   ├── css/  fonts/  js/     # tokens.css (shared design tokens), legacy.css (cascade layer),
-│   │                         #   self-hosted fonts, js/i18n ar+en (shared dictionaries),
-│   │                         #   vanilla pages still hosted: internet, security, vpn,
-│   │                         #   share, systemTabs (+ helpers); see "The dashboard (web UI)"
+│   ├── css/  fonts/  js/     # tokens.css (design tokens), self-hosted fonts, js/i18n ar+en
+│   ├── 404.html              # server-side not-found page
 │   ├── logo.svg
 │   ├── milestone.html        # public household page: own usage + per-device split,
 │   │                         #   one-time 50/75/100% milestone acknowledge

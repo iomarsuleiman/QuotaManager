@@ -1,8 +1,8 @@
 """Dashboard guards: served, cache-safe, CSP-clean, self-contained, i18n parity.
 
-Since 0.6 the shell and the main pages are React + TypeScript (frontend/src), built
-by Vite into web/index.html + web/app/* (hashed names). Pages not migrated yet are
-the vanilla modules in web/js/, hosted inside the React shell."""
+Since 0.6 the whole dashboard is React + TypeScript (frontend/src), built by Vite into
+web/index.html + web/app/* (hashed names). web/js/ keeps only the shared dictionaries
+(web/js/i18n/{en,ar}.js) and web/css/ only the design tokens."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def test_hashed_app_files_are_immutable_and_precompressed(client):
 
 
 def test_ui_js_and_fonts_served(client):
-    r = client.get("/js/core/i18n.js")
+    r = client.get("/js/i18n/en.js")
     assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"  # revalidate after an update
     f = client.get("/fonts/inter-latin.woff2")
     assert f.status_code == 200 and f.content[:4] == b"wOF2"
@@ -162,9 +162,9 @@ def test_vpn_page_only_calls_endpoints_that_exist():
     """The new VPN page must hit the exact routes the gateway exposes (no drift)."""
     app_src = (ROOT / "api" / "app.py").read_text(encoding="utf-8")
     routes = {re.sub(r"\{\w+\}", "{}", m) for m in re.findall(r"@app\.\w+\(\"(/api/vpn[^\"]*)\"", app_src)}
-    js = (UI / "js" / "core" / "vpn.js").read_text(encoding="utf-8")
+    js = (SRC / "lib" / "vpn.ts").read_text(encoding="utf-8")
     used = {re.sub(r"\$\{[^}]+\}", "{}", m).split("?")[0] for m in re.findall(r"[\"`](/api/vpn[^\"`]*)[\"`]", js)}
-    assert used, "no VPN endpoints found in core/vpn.js"
+    assert used, "no VPN endpoints found in frontend/src/lib/vpn.ts"
     assert used <= routes, f"unknown endpoints: {used - routes}"
 
 
@@ -235,20 +235,26 @@ def test_network_changes_are_never_optimistic():
     assert "setQueryData" not in act
 
 
-def test_legacy_host_shares_the_core_modules():
-    """Regression: importing /js/core/i18n.js with a ?v= query made a second module
-    instance, so hosted vanilla pages ignored the language switch."""
-    lg = (SRC / "pages/Legacy.tsx").read_text()
-    assert 'load("/js/core/i18n.js", false)' in lg and 'load("/js/components/drawer.js", false)' in lg
-    for page in ("internet", "security", "vpn", "share", "systemTabs"):
-        assert (UI / "js" / "pages" / f"{page}.js").exists(), page
+def test_transfer_engine_starts_at_sign_in_on_every_page():
+    """Regression: the old shell opened the live-transfer socket at boot, so an incoming
+    request popped up on ANY page. The React shell mounts the overlay (which starts the
+    engine) outside the routed page, and the wire protocol is unchanged."""
+    app = (SRC / "shell/App.tsx").read_text()
+    assert "<TransferOverlay />" in app and app.index("<TransferOverlay />") > app.index("</Suspense>")
+    ov = (SRC / "shell/TransferOverlay.tsx").read_text()
+    assert "startLiveShare()" in ov and "acceptIncoming" in ov and "declineIncoming" in ov
+    eng = (SRC / "lib/liveTransfer.ts").read_text()
+    for needle in ("/api/share/live/ws", "/api/share/live/download/", "transfer-request", "transfer-response",
+                   "transfer-done", "transfer-cancel", "0x04034b50", "0x02014b50", "0x06054b50", "http_stream: true"):
+        assert needle in eng, needle
+    assert not (UI / "js" / "pages").exists() and not (UI / "js" / "core").exists(), "every page is React now"
 
 
 def test_sidebar_order_uses_stable_ids_and_survives_new_routes():
     rt = (SRC / "shell/routes.ts").read_text()
     assert "export function mergeOrder" in rt and "v: 1" in (SRC / "lib/prefs.ts").read_text()
     sb = (SRC / "shell/Sidebar.tsx").read_text()
-    assert 'setPref("navOrder", null)' in (SRC / "pages/System.tsx").read_text()  # one-click reset
+    assert '"navOrder", null' in (SRC / "pages/System.tsx").read_text()  # one-click reset
     dnd = (SRC / "shell/SortableNav.tsx").read_text()
     assert "KeyboardSensor" in dnd and "TouchSensor" in dnd  # keyboard + long-press, not pointer-only
     assert "nav.reorder" in sb  # the handle has an accessible name
@@ -256,17 +262,13 @@ def test_sidebar_order_uses_stable_ids_and_survives_new_routes():
 
 def test_release_notes_are_rendered_not_dumped_as_raw_markdown():
     """The "What's new" dialog turns **bold**, `code`, ### headings and - bullets
-    into nodes (never innerHTML) and lets each line pick its own direction."""
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    js = (root / "web/js/pages/systemTabs.js").read_text(encoding="utf-8")
-    assert "export function mdLite" in js and 'dir: "auto"' in js
-    assert "mdLite(c.body)" in js and "pre-wrap" not in js[js.index("const details"):js.index("const details") + 600]
-    assert ".cl-li" in (root / "web/css/components.css").read_text(encoding="utf-8")
+    into nodes (never raw HTML) and lets each line pick its own direction."""
+    js = (SRC / "pages/SystemTabs.tsx").read_text(encoding="utf-8")
+    assert "export function mdLite" in js and 'dir="auto"' in js
+    assert "mdLite(c.body)" in js and "pre-wrap" not in js[js.index("upd.details"):js.index("upd.details") + 900]
 
 
 def test_read_only_dialogs_have_one_close_button():
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1] / "web/js"
-    assert "infoOnly ? null" in (root / "components/dialog.js").read_text(encoding="utf-8")
-    assert "infoOnly: true" in (root / "pages/systemTabs.js").read_text(encoding="utf-8")
+    js = (SRC / "pages/SystemTabs.tsx").read_text(encoding="utf-8")
+    notes = js[js.index("<Dialog open={notes}"):js.index("</Dialog>", js.index("<Dialog open={notes}"))]
+    assert 't("common.close")' in notes and 't("common.cancel")' not in notes

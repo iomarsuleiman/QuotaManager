@@ -1,8 +1,0 @@
-/* Pages still written in vanilla JS (Internet, Security, VPN, Share, System tabs)
-   are hosted inside the React shell. Their CSS sits in the "legacy" cascade layer:
-   above Tailwind's reset, below the React components and utilities, so neither
-   side can override the other by accident. Same order as frontend/src/styles/app.css. */
-@layer theme, base, legacy, components, utilities;
-@import url("base.css?v=3") layer(legacy);
-@import url("layout.css?v=3") layer(legacy);
-@import url("components.css?v=6") layer(legacy);

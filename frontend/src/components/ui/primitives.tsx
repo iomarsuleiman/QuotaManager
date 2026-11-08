@@ -3,6 +3,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Popover from "@radix-ui/react-popover";
 import clsx from "clsx";
 import { Icon } from "./Icon";
+import { Illustration, hasArt } from "./Illustration";
 import { t } from "../../lib/i18n";
 import type { Tone } from "../../lib/format";
 
@@ -20,8 +21,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <button ref={ref} type={type} disabled={disabled || pending} aria-busy={pending || undefined}
       className={clsx("inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap rounded-md transition-[background,color,filter] duration-150 select-none",
+        // long (often Arabic) labels wrap on narrow phones instead of pushing the page sideways
+        "max-sm:max-w-full max-sm:whitespace-normal max-sm:text-center",
         "disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
-        size === "sm" ? "h-8 px-3 text-[12.5px]" : "h-9 px-4 text-[13.5px] max-md:h-11", variants[variant], className)} {...rest}>
+        size === "sm" ? "min-h-8 py-1 px-3 text-[12.5px]" : "min-h-9 py-1.5 px-4 text-[13.5px] max-md:min-h-11", variants[variant], className)} {...rest}>
       {pending ? <Spinner /> : icon ? <Icon name={icon} size={size === "sm" ? 15 : 16} /> : null}
       {pending && pendingText ? pendingText : children}
     </button>
@@ -97,10 +100,12 @@ export function Card({ title, sub, actions, children, className, bare, id }: { t
     </section>
   );
 }
-export function Empty({ icon = "info", title, sub, action }: { icon?: string; title: ReactNode; sub?: ReactNode; action?: ReactNode }) {
+/** Empty state: illustration + what this is + the next step (never a dead end). */
+export function Empty({ icon = "info", title, sub, action, compact }: { icon?: string; title: ReactNode; sub?: ReactNode; action?: ReactNode; compact?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 px-3 py-8 text-center">
-      <span className="mb-1 grid size-10 place-items-center rounded-full bg-raised text-fg-3"><Icon name={icon} size={20} /></span>
+    <div className={clsx("flex flex-col items-center gap-1.5 px-3 text-center", compact ? "py-5" : "py-8")}>
+      {!compact && hasArt(icon) ? <Illustration name={icon} size={112} className="mb-1" />
+        : <span className="mb-1 grid size-10 place-items-center rounded-full bg-raised text-fg-3"><Icon name={icon} size={20} /></span>}
       <b className="text-[14px] text-fg">{title}</b>
       {sub && <p className="max-w-sm text-[12.5px] text-fg-3">{sub}</p>}
       {action && <div className="mt-2 flex flex-wrap justify-center gap-2">{action}</div>}

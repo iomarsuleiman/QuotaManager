@@ -69,3 +69,15 @@ describe("charts", () => {
     expect(downsample(pts, 100)).toHaveLength(100); expect(downsample(pts.slice(0, 10), 100)).toHaveLength(10);
   });
 });
+
+import { crc32 } from "./liveTransfer";
+describe("device-to-device transfer", () => {
+  it("CRC-32 matches the standard check value (ZIP entries depend on it)", () => {
+    const c = crc32(0xFFFFFFFF, new TextEncoder().encode("123456789"));
+    expect(((c ^ 0xFFFFFFFF) >>> 0).toString(16)).toBe("cbf43926");
+    // chunked = one shot (files are streamed in 512 KB slices)
+    const data = new Uint8Array(100_003).map((_, i) => (i * 31) & 255);
+    let a = 0xFFFFFFFF; for (let i = 0; i < data.length; i += 4096) a = crc32(a, data.subarray(i, i + 4096));
+    expect(a).toBe(crc32(0xFFFFFFFF, data));
+  });
+});

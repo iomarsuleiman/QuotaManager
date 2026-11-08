@@ -17,7 +17,7 @@ network path; Python only configures it and does the accounting.
 - **dnsmasq**: DHCP (+ DHCPv6/RA), DNS forwarder, domain filtering, query log.
 - **Python (FastAPI + asyncio, single process `run.py`)**: one maintenance tick every
   15 s, REST API + `/ws`, SQLite (aiosqlite).
-- **Web UI**: React + TypeScript source in `frontend/` built by Vite into `web/index.html` + `web/app/` (committed; no Node on the box). Pages not migrated yet are vanilla modules in `web/js/pages/` hosted by the React shell.
+- **Web UI**: React + TypeScript source in `frontend/` built by Vite into `web/index.html` + `web/app/` (committed; no Node on the box). `web/js/` keeps only the shared dictionaries (`i18n/{en,ar}.js`); `web/css/` only `tokens.css`; `web/404.html` is the server-side not-found page.
 - **sing-box** child process for the built-in VPN (Clash API on 127.0.0.1:9090).
 
 ## 2. Golden rules (each one is a past incident)
@@ -62,8 +62,7 @@ network path; Python only configures it and does the accounting.
     content-hashed names (served `immutable`, from a `.gz` twin); `index.html` is `no-store`, so
     a rebuild = new names. Always rebuild (`cd frontend && npm run build`) and commit `web/`
     after changing `frontend/src` (CI fails on a stale build). Legacy `/js/`, `/css/`, `/fonts/`
-    stay `no-cache`; bump `LEGACY_V` in `frontend/src/pages/Legacy.tsx` when you change a hosted
-    vanilla page. A fixed `?v=` + no cache header once made browsers run an old UI.
+    stay `no-cache`. A fixed `?v=` + no cache header once made browsers run an old UI.
 14. **Secrets**: `quota-manager-secret.asc` (PGP *private* key) is git-ignored — never copy it
     to a server, never commit it. `data/`, `logs/` hold the admin hash and usage.
 
@@ -129,12 +128,13 @@ nftables.conf, IPv6 host config).
 | `quota/ipv6_setup.py` | app-owned IPv6 host config: dnsmasq RA fragment, sysctl, box DNS fix, rollback, kill-switch | |
 | `quota/local_share.py` | LAN file sharing (`/api/share`) | |
 | `quota/updater.py` | GitHub self-update | |
+| `quota/passkeys.py` | passkeys (WebAuthn, platform authenticators): options/verify, challenge store, `relying_party` (needs a name + HTTPS; never an IP) | session cookie (→ `api/app.py::_issue_session`) |
 | `quota/tailscale.py` | built-in Tailscale remote access (status / install / connect / disconnect) | |
 | `scripts/setup_gateway_kali.sh` | first install: packages, sysctl, dnsmasq, NAT, systemd unit (`CONF_DIR=/etc/quota-gateway`) | day-2 changes — those belong in the app |
 | `scripts/topology.sh` | runtime LAN/WAN applier invoked by the panel | |
 | `frontend/src/` (`shell/`, `pages/`, `components/{ui,domain}/`, `lib/`) | the dashboard: React + TS, one lazy chunk per page, design-system components | network logic (→ API) |
 | `web/index.html`, `web/app/` | BUILD OUTPUT of `frontend/` (commit it) | hand edits |
-| `web/js/pages/{internet,security,vpn,share,systemTabs}.js`, `web/js/i18n/{en,ar}.js`, `web/css/tokens.css` | vanilla pages still hosted by the React shell; the shared dictionaries; the one design-token file | |
+| `web/js/i18n/{en,ar}.js`, `web/css/tokens.css` | the dictionaries (AR/EN parity tested); the one design-token file (OKLCH, contrast tested) | |
 | `packaging/DEBIAN/` | `.deb` build | |
 | `tests/` | one `test_<module>.py` per module (+ `test_ci`, `test_packaging`, `test_web_ui`) | |
 
@@ -166,11 +166,11 @@ dataclass field with a default there, then the commented line in `config.yaml`, 
 | New background probe/subsystem | module in `quota/` (start/stop, injected `run`) → start in `Gateway.startup_subsystems`, stop in `shutdown`, tick hook if periodic → config dataclass → tests |
 | Host-level requirement (sysctl, dnsmasq option, NAT rule, address) | `startup_health.py` / `ipv6_setup.py` (idempotent, never raises) → hooked in `_startup_self_heal` → ALSO the setup script → test the "second run is a no-op" case |
 | IPv6 behaviour | `ipv6_probe.py` (state), `nftables.py` (`v6gate`, `in6guard`, counters, `blocked6`), `shaping.py` (prio 7/5), `run.py` (`_collect_neigh_active`, `_ipv6_wan_wanted`, `_tracked_ipv6`, cap `IPV6_MAX_PER_MAC`), `ipv6_setup.py` (host), UI `renderWan`/device card |
-| VPN behaviour | config text → `vpn_parser.generate_sing_box_config`; process/state → `vpn_manager.py`; who goes through the tunnel → `vpnshare.py` + `run.py::_sync_vpn_share`; node editing UI → `app.js` `loadVpn*/renderVpn*` |
+| VPN behaviour | config text → `vpn_parser.generate_sing_box_config`; process/state → `vpn_manager.py`; who goes through the tunnel → `vpnshare.py` + `run.py::_sync_vpn_share`; node editing UI → `frontend/src/pages/Vpn.tsx` + `lib/vpn.ts` |
 | DNS filtering | `dns_rules.py` (render) + `run.py::_sync_dns_rules`; never write dnsmasq files from the API layer |
 | Quota/blocking rule | `service.py` (`compute_allowances`, `evaluate_blocks`) — kernel gets the result via tick step 4 |
 | Dashboard tab/card | `frontend/src/pages/<Tab>.tsx` using `components/ui/*` (never raw hex colours; tokens only); every user-visible string goes through `t("key")`/`tf()` in BOTH `web/js/i18n/en.js` and `ar.js` (`tests/test_new_ui.py` checks parity); gateway changes via `useAction` (never optimistic); then `cd frontend && npm run build` and commit `web/` |
-| Live traffic destinations | `quota/flows.py` (sampling/labels) → `run.py` tick (`self.flows`, `EngineSnapshot.flows_by_mac`) → `history_analytics` (`top_destinations`) → `web/js/pages/insights.js` |
+| Live traffic destinations | `quota/flows.py` (sampling/labels) → `run.py` tick (`self.flows`, `EngineSnapshot.flows_by_mac`) → `history_analytics` (`top_destinations`) → `frontend/src/pages/Insights.tsx` |
 | Live traffic / LED | `history_analytics.get_live_traffic_analytics`; presence in `run.py::_collect_neigh_active`, `_maybe_latency_tick`, `_latency_active_ips` |
 | Release | bump `quota/version.py` + CHANGELOG section; tags only for a real release (see §7) |
 
@@ -185,8 +185,8 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements-linux.txt pyte
 .venv/bin/pytest -q --timeout=60            # if a sandbox segfaults on the full run, run per file
 for f in $(find web/js -name '*.js'); do node --check "$f"; done
 (cd frontend && npm ci && npx tsc -b && npx vitest run && npm run build)   # then commit web/
-# Dashboard (web/, served at /): ES modules, no build step. tests/test_new_ui.py guards it
-# (no inline script/handlers, self-hosted fonts only, ar/en key parity, imports resolve).
+# Dashboard: tests/test_new_ui.py + test_design_tokens.py guard it (CSP-clean, immutable
+# hashed assets, ar/en key parity, drafts/keyboard contracts, WCAG contrast).
 bash -n scripts/setup_gateway_kali.sh scripts/topology.sh scripts/test_pppoe.sh
 ```
 

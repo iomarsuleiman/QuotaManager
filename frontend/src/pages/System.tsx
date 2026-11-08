@@ -5,7 +5,7 @@ import { t } from "../lib/i18n";
 import { Badge, Button, Card, Meter, Banner } from "../components/ui/primitives";
 import { Segmented, SwitchRow } from "../components/ui/forms";
 import { useToast } from "../components/ui/overlays";
-import { LegacyHost } from "./Legacy";
+import { AccountTab, UpdatesTab, LogsTab } from "./SystemTabs";
 
 type Tab = "appearance" | "account" | "updates" | "logs";
 export default function System() {
@@ -13,7 +13,7 @@ export default function System() {
   return (
     <div className="flex flex-col gap-[var(--gap)]">
       <Segmented label={t("sys.tabs")} value={tab} onChange={setTab} options={(["appearance", "account", "updates", "logs"] as Tab[]).map((k) => ({ value: k, label: t("sys.tab." + k) }))} />
-      {tab === "appearance" ? <Appearance /> : <LegacyHost key={tab} path="/js/pages/systemTabs.js" exportName={tab + "Tab"} />}
+      {tab === "appearance" ? <Appearance /> : tab === "account" ? <AccountTab /> : tab === "updates" ? <UpdatesTab /> : <LogsTab />}
     </div>
   );
 }

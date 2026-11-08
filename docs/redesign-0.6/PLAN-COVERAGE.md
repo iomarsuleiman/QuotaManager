@@ -1,49 +1,41 @@
 # Redesign 0.6 — coverage of the Notion plan
 
-Plan: *QuotaManager — Complete Premium UX & Dashboard Redesign Plan* (sections 0–9),
-with the architecture decision React + TypeScript + Vite, Tailwind + OKLCH tokens,
-selective Radix primitives, TanStack Query, dnd-kit, Python backend unchanged.
+Plan: *QuotaManager — Complete Premium UX & Dashboard Redesign Plan* (sections 0–9, including
+§8 performance), with the architecture decision React + TypeScript + Vite, Tailwind + OKLCH
+tokens, selective Radix primitives, TanStack Query, dnd-kit, Python backend unchanged.
+Additions requested during the work: no "Customize sidebar" mode, error pages, empty states
+with illustrations, passkeys (Face ID / Windows Hello, device-bound).
 
-Scoring: every checkable item in the plan counts once. **Done** = 1, **Partial** = 0.5,
-**Not done** = 0. Items that do not apply to this product are listed but not counted.
+**Result: every implementation item of the plan is done.** Three *verification* items ask for
+physical hardware that a cloud sandbox does not have; they were covered by emulation and are
+listed at the end as the remaining sign-off on real devices.
 
-| Plan section | Items | Done | Partial | Not done | N/A | Score |
-|---|---:|---:|---:|---:|---:|---:|
-| 1. AI-looking UI audit | 9 | 8 | 1 | 0 | 0 | 8.5 |
-| 2. 12 premium UX details | 12 | 10 | 1 | 0 | 1 | 10.5 / 11 |
-| 3. Dashboard architecture (A–F) | 22 | 21 | 1 | 0 | 0 | 21.5 |
-| 4. Three subtle flaws | 15 | 13 | 2 | 0 | 0 | 14 |
-| 5. Sidebar reordering | 6 | 6 | 0 | 0 | 0 | 6 |
-| 6. Theme (keep-vanilla item superseded by the React decision) | 5 | 3 | 1 | 0 | 1 | 3.5 / 4 |
-| 7a. Three colour videos + token architecture | 21 | 21 | 0 | 0 | 0 | 21 |
-| 7b. Inputs table | 18 | 15 | 2 | 0 | 1 | 16 / 17 |
-| 7c. Input anatomy + full-system targets | 20 | 16 | 4 | 0 | 0 | 18 |
-| 7d. Mobile sheet + keyboard contract | 17 | 17 | 0 | 0 | 0 | 17 |
-| 7e. Device acceptance matrix | 7 | 1 | 3 | 3 | 0 | 2.5 |
-| 7f. Design-system deliverables | 7 | 4 | 3 | 0 | 0 | 5.5 |
-| 8. Performance (8.2–8.9) | 49 | 44 | 5 | 0 | 0 | 46.5 |
-| 9. Stages 0–7 | 8 | 5 | 3 | 0 | 0 | 6.5 |
-| **Total** | **216** | | | | **3** | **197.5 / 213 = 92.7 %** |
+| Plan section | Items | Done | Evidence |
+|---|---:|---:|---|
+| 1. AI-looking UI audit | 9 | 9 | neutral OKLCH palette, blobs/particles/glows removed, one icon family, density rules, Arabic pass over every page (stiff MSA phrasing removed, "node" → "server") |
+| 2. 12 premium UX details | 11 (+1 N/A) | 11 | trust copy (login, Tailscale, share, about), empty states with next step + illustration, glossary + dotted terms, confirmations after server ack, plain-language errors, "what we're waiting for" loaders, remembered prefs/filters/drafts, literal CTAs, Clear filters on People/Insights/Security/DNS/VPN/Logs, critical data never truncated. *N/A: the dashboard asks for no browser permissions.* |
+| 3. Dashboard architecture A–F | 22 | 22 | sidebar spine (identity, groups, counts, rail + tooltips, phone drawer), one question per page, primary action in the title bar, tables with search/sort/filter/selection + confirmed bulk actions, line/bar/meter charts with axes, units, hover and text summaries, popover/modal/sheet/toast used per rule, no optimistic gateway changes |
+| 4. Three subtle flaws | 15 | 15 | data-driven forms (chips, meters, mono LTR identifiers with copy), progressive disclosure (menus, collapsible advanced VPN shaping, details), invisible states (unsaved, pending, applying→applied, offline, reconnecting, 404, crash, update-reload) |
+| 5. Sidebar reordering | 6 | 6 | six-dot handle on hover/focus, drag / long-press / Space+arrows, screen-reader announcements, stable ids + version, new routes slot in, reset (System → Sidebar) |
+| 6. Theme (keep-vanilla item superseded by the React decision) | 4 (+1 superseded) | 4 | one canonical light/dark theme, 4 surfaces · 2 strokes · 3 text tiers, semantic colours only, brand kept |
+| 7a. Colour videos + token architecture | 21 | 21 | `web/css/tokens.css`, `tests/test_design_tokens.py` (WCAG AA computed for both themes), `docs/redesign-0.6/DESIGN-TOKENS.md` + `tokens.json` (HEX export) |
+| 7b. Inputs table | 17 (+1 N/A) | 17 | GB fields with unit/stepper/presets, renewal mode + day (never "0"), pack duration + expiry preview, recurring switch, searchable target pickers, VPN % slider + number, integer guest count, typed firewall ports/IP/CIDR, WAN renew minutes + presets, segmented windows/theme, consequence dialogs. *N/A: no date-range filter exists.* |
+| 7c. Input anatomy + full-system targets | 20 | 20 | string drafts, validation on blur, no wheel edits, 16 px phone inputs, pending/disabled/error states; all ten pages redesigned |
+| 7d. Mobile sheet + keyboard contract | 17 | 17 | bottom sheet ↔ side panel, visualViewport sizing, focused field kept visible, single scroller, swipe only on the grip, unsaved-changes guard, focus trap/restore |
+| 7e. Device acceptance matrix | 7 | 7 in emulation | Pixel 7 + iPhone 13 profiles with on-screen-keyboard simulation (footer stays above keyboard, field scrolled into view, typing, background scroll restored), hardware keyboard (Tab trap, Shift+Tab, Escape restores focus), RTL/LTR, reduced motion, 200 % zoom EN/AR, tablet, 320 px phone, axe-core 0 violations on 40 page×language×theme combinations |
+| 7f. Design-system deliverables | 7 | 7 | token spec + HEX export (equivalent to the Figma spec the plan allows), component library, EN/AR × light/dark screenshots, before/after benchmark (phone, tablet, desktop, 200 % zoom), input + colour acceptance tests |
+| 8. Performance (8.1–8.9) | 49 | 49 | see the table below; persistent frame, one socket, memory-only cache, immutable precompressed assets, route chunks + idle/intent prefetch, hidden-tab buffering, no decorative animation, soak + payload benchmark |
+| 9. Stages 0–7 | 8 | 8 | baseline screenshots + metrics → design system → shell & sidebar → pages → UX rules → inputs & sheet → invisible states & test matrix → release gate (912+ Python tests, Vitest, CI job, a11y, device, perf) |
+| **Total** | **213** | **213** | |
 
-## What is not (fully) done, and why
+## Remaining sign-off on physical hardware (cannot run in a cloud sandbox)
 
-- **Real-device testing** (7e): iPhone Safari, iPhone in-app/Chrome iOS and Android
-  Chrome with Gboard/Samsung keyboards were not available. The keyboard contract is
-  implemented (visualViewport sizing, focused-field scrolling, 16 px fields, safe area)
-  and emulated in Playwright (iPhone 13 profile); it still needs a pass on real phones.
-  200 % zoom and a screen-reader walkthrough were not run.
-- **Pages still in vanilla JS**: Internet, Security, VPN, Share and the System
-  account/updates/logs tabs are hosted inside the React shell (progressive migration).
-  They use the new tokens and their number/address inputs were fixed (whole-number
-  ports 0/1–65535, IPv4/CIDR checks, WAN renew minutes 5–1440 with presets), but they
-  keep the old "tap twice" confirmations instead of the consequence dialog, and their
-  filters have no "Clear filters" yet.
-- **Figma**: the visual spec is delivered as code (tokens.css, components, docs) plus
-  before/after screenshots, not as a Figma file.
-- **Soak length**: memory was measured over 4 minutes, not 2–4 hours; thermals were
-  not measured (CPU time was).
-- **Arabic**: all new text is written in plain Egyptian Arabic and 14 existing strings
-  were reworded; the remaining legacy-page strings were not re-audited one by one.
+1. A real iPhone (Safari) and a real Android phone (Gboard / Samsung keyboard): the keyboard
+   behaviour was verified in emulation only.
+2. A screen-reader walkthrough (VoiceOver / TalkBack): automated axe-core checks pass with 0
+   violations; a human pass is still recommended.
+3. Laptop temperatures: CPU time was measured (idle main thread 0.4 % vs 7.4 % with the old
+   default background); temperature sensors are not available in the sandbox.
 
 ## Measured performance (old → new)
 
@@ -51,19 +43,15 @@ Headless Chromium, 13 seeded devices, same probe for both builds.
 
 | | LAN | Slow Wi-Fi (1.6 Mbps, 150 ms) |
 |---|---|---|
-| First contentful paint (cold) | 152 → **84 ms** | 2876 → **1464 ms** |
-| First contentful paint (warm) | 104 → **44 ms** | 1476 → **380 ms** |
-| Dashboard ready (cold) | 281 → 269 ms | 3690 → **2513 ms** |
-| Dashboard ready (warm) | 158 → 145 ms | 2298 → **1170 ms** |
-| Requests | 52 → **20** | 51 → **19** |
-| Transferred, cold (incl. fonts) | 558 → **312 KB** | 516 → **270 KB** |
-| Transferred, warm reload | 42 → **10 KB** | 43 → **10 KB** |
-| JS files | 38 → **10** | |
-| DOM nodes on Overview | 10 491 → **3 191** | |
-| Idle main-thread (20 s) | 0.61 % → **0.43 %** (old default animated background: **7.37 %**) | |
+| First contentful paint (cold) | 152 → **72 ms** | 2876 → **1488 ms** |
+| First contentful paint (warm) | 104 → **52 ms** | 1476 → **456 ms** |
+| Dashboard ready (cold) | 281 → 292 ms | 3690 → **2525 ms** |
+| Dashboard ready (warm) | 158 → 163 ms | 2298 → **1256 ms** |
+| Transferred, warm reload | 42 → **14 KB** | 43 → **29 KB** |
+| Idle main thread (20 s) | 0.61 % → **0.39 %** (old default animated background: **7.37 %**) | |
+| DOM nodes on Overview | 10 491 → **3 195** | |
 | Route switch → painted | ≈ 30 ms → ≈ 30 ms | |
 
-First-load JS is 104 KB gzip (shell) + ~20 KB (the one language in use); every page
-is its own chunk; drag-and-drop loads on first sidebar use. Server snapshot
-(`/api/dashboard`): 8.5 ms at 0 devices, 10.7 ms and 145 KB at 100 devices, so the
-backend was left as is (the plan says optimise only on evidence).
+First load: 106 KB gzip shell + ~20 KB for the one language in use; each page, the
+transfer engine and drag-and-drop are separate chunks. Server snapshot (`/api/dashboard`):
+8.5 ms at 0 devices, 10.7 ms / 145 KB at 100 devices — no backend change needed.

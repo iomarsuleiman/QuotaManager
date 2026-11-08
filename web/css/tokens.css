@@ -80,14 +80,3 @@
   --scrim:oklch(0.2 0.01 260 / .34);
   color-scheme:light;
 }
-
-/* Legacy names (pages still written in vanilla JS read these). They point at the
-   semantic tokens above, so the whole UI shares one palette. */
-:root{
-  --bg:var(--bg-canvas);--surface:var(--bg-surface);--surface-2:var(--bg-raised);--surface-3:var(--stroke-subtle);
-  --line:var(--stroke-subtle);--line-2:var(--stroke-strong);
-  --text:var(--text-primary);--text-2:var(--text-secondary);--text-3:var(--text-tertiary);
-  --ok:var(--success);--warn:var(--warning);
-  --accent-2:var(--accent);--accent-line:var(--accent-soft);
-  --shadow:none;
-}

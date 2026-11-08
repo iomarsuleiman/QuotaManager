@@ -1,4 +1,4 @@
-import { Suspense, createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, lazy, createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import * as DialogP from "@radix-ui/react-dialog";
 import clsx from "clsx";
@@ -12,9 +12,16 @@ import { Button, IconButton, Banner, Loading, Spinner } from "../components/ui/p
 import { Dialog } from "../components/ui/overlays";
 import { TextField } from "../components/ui/forms";
 import { Welcome } from "./Welcome";
-import { syncLegacy } from "../pages/Legacy";
+import { passkeyBlocker, signInWithPasskey, isCancel } from "../lib/passkey";
+import { PageErrorBoundary, NotFound, ErrorView } from "../components/ui/ErrorView";
 
-const routeOf = (): RouteId => { const id = location.hash.replace(/^#\/?/, ""); return (routeById(id) ? id : "overview") as RouteId; };
+
+// Device-to-device transfers: engine + overlay load after first paint (own chunk).
+const TransferOverlay = lazy(() => import("./TransferOverlay"));
+const hashId = () => location.hash.replace(/^#\/?/, "");
+const routeOf = (): RouteId => (routeById(hashId()) ? hashId() : "overview") as RouteId;
+/** A typed or old bookmarked address that is not a page: say so instead of silently showing Overview. */
+const isMissing = () => hashId() !== "" && !routeById(hashId());
 
 /* Pages put their primary action into the title bar through this slot. */
 const SlotCtx = createContext<HTMLElement | null>(null);
@@ -27,16 +34,41 @@ export default function App() {
   const { authed } = useSession();
   const prefs = usePrefs();
   const [, force] = useState(0);
-  useEffect(() => { let gone = false; loadLang(prefs.lang).then(() => { if (gone) return; setLang(prefs.lang); syncLegacy(); force((x) => x + 1); }).catch(() => {}); return () => { gone = true; }; }, [prefs.lang]);
+  useEffect(() => { let gone = false; loadLang(prefs.lang).then(() => { if (gone) return; setLang(prefs.lang); force((x) => x + 1); }).catch(() => {}); return () => { gone = true; }; }, [prefs.lang]);
   if (authed === null) return <div className="grid min-h-dvh place-items-center text-fg-3" role="status"><span className="flex items-center gap-2"><Spinner />{t("boot.checking")}</span></div>;
+  if (authed === "unreachable") return <Unreachable />;
   if (!authed) return <Login />;
   return <Shell />;
+}
+
+/** The box did not answer at all (off, rebooting after an update, or this device is on another network). */
+function Unreachable() {
+  const { retryBoot } = useSession();
+  const [n, setN] = useState(10);
+  useEffect(() => { const i = setInterval(() => setN((x) => { if (x <= 1) { retryBoot(); return 10; } return x - 1; }), 1000); return () => clearInterval(i); }, [retryBoot]);
+  return (
+    <main className="grid min-h-dvh place-items-center bg-frame p-4">
+      <ErrorView art="wifioff" title={t("boot.down.t")} actions={<Button variant="primary" icon="reset" onClick={retryBoot}>{t("conn.retry")}</Button>}>
+        <p>{t("boot.down.d")}</p>
+        <ul className="mt-3 list-disc ps-5 text-start text-[12.5px] text-fg-3"><li>{t("boot.down.1")}</li><li>{t("boot.down.2")}</li><li>{t("boot.down.3")}</li></ul>
+        <p className="mt-3 text-[12px] text-fg-3" aria-live="polite">{tf("boot.down.auto", { n })}</p>
+      </ErrorView>
+    </main>
+  );
 }
 
 function Login() {
   const { signedIn } = useSession();
   const [step, setStep] = useState<"password" | "totp">("password");
   const [pw, setPw] = useState(""), [code, setCode] = useState(""), [err, setErr] = useState<string | null>(null), [busy, setBusy] = useState(false);
+  // Passkey button only where the browser + address can actually do it (HTTPS name, built-in authenticator).
+  const [pkOk, setPkOk] = useState(false), [pkBusy, setPkBusy] = useState(false);
+  useEffect(() => { passkeyBlocker().then((b) => setPkOk(b === null)).catch(() => {}); }, []);
+  const withPasskey = async () => {
+    setPkBusy(true); setErr(null);
+    try { await signInWithPasskey(); setPw(""); signedIn(); }
+    catch (ex) { if (!isCancel(ex)) setErr(/invalid credentials|401/i.test((ex as Error).message) ? t("pk.login.unknown") : (ex as Error).message); setPkBusy(false); }
+  };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); if (busy) return; setBusy(true); setErr(null);
     try {
@@ -59,6 +91,10 @@ function Login() {
           : <TextField label={t("login.code")} hint={t("login.code.hint")} inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} autoFocus mono maxLength={8} />}
         {err && <p role="alert" className="text-[13px] text-danger">{err}</p>}
         <Button type="submit" variant="primary" pending={busy} pendingText={t("login.wait")}>{step === "totp" ? t("login.verify") : t("login.submit")}</Button>
+        {pkOk && step === "password" && <>
+          <div className="flex items-center gap-3 text-[12px] text-fg-3" aria-hidden><span className="h-px flex-1 bg-line" />{t("pk.or")}<span className="h-px flex-1 bg-line" /></div>
+          <Button icon="lock" onClick={withPasskey} pending={pkBusy} pendingText={t("pk.login.wait")}>{t("pk.login")}</Button>
+        </>}
         <p className="text-[12px] leading-relaxed text-fg-3">{t("login.trust")}</p>
       </form>
     </main>
@@ -70,11 +106,12 @@ function Shell() {
   const dash = useDashboard();
   const prefs = usePrefs();
   const [route, setRoute] = useState<RouteId>(routeOf);
+  const [missing, setMissing] = useState(isMissing);
   const [navOpen, setNavOpen] = useState(false), [help, setHelp] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const main = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    const on = () => { setRoute(routeOf()); setNavOpen(false); main.current?.focus({ preventScroll: true }); window.scrollTo(0, 0); };
+    const on = () => { setRoute(routeOf()); setMissing(isMissing()); setNavOpen(false); main.current?.focus({ preventScroll: true }); window.scrollTo(0, 0); };
     window.addEventListener("hashchange", on); return () => window.removeEventListener("hashchange", on);
   }, []);
   useEffect(() => { prefetchLikely(route); document.title = `${t("nav." + route)} · QuotaManager`; }, [route, prefs.lang]);
@@ -102,15 +139,15 @@ function Shell() {
             <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 md:px-6">
               <IconButton icon="menu" label={t("common.menu")} className="md:hidden" onClick={() => setNavOpen(true)} />
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-[17px] font-semibold text-fg md:text-[19px]">{t("nav." + route)}</h1>
-                {sub && <p className="truncate text-[12.5px] text-fg-3 max-sm:hidden">{sub}</p>}
+                <h1 className="truncate text-[17px] font-semibold text-fg md:text-[19px]">{missing ? t("err.404.short") : t("nav." + route)}</h1>
+                {sub && !missing && <p className="truncate text-[12.5px] text-fg-3 max-sm:hidden">{sub}</p>}
               </div>
               <div ref={setSlot} className="flex items-center gap-2 empty:hidden max-sm:order-last max-sm:w-full max-sm:justify-end" />
               <div className="flex items-center gap-0.5">
                 <div role="group" aria-label={t("common.language")} className="me-1 flex rounded-md border border-line p-0.5">
                   {(["ar", "en"] as const).map((l) => (
                     <button key={l} type="button" aria-pressed={prefs.lang === l} onClick={() => setPref("lang", l)} lang={l}
-                      className={clsx("h-7 rounded-[5px] px-2 text-[12px] font-semibold max-md:h-9", prefs.lang === l ? "bg-raised text-fg" : "text-fg-3 hover:text-fg")}>{l === "ar" ? "ع" : "EN"}</button>
+                      className={clsx("h-7 min-w-8 rounded-[5px] px-2 text-[12px] font-semibold max-md:h-9 max-md:min-w-10", prefs.lang === l ? "bg-raised text-fg" : "text-fg-3 hover:text-fg")}>{l === "ar" ? "ع" : "EN"}</button>
                   ))}
                 </div>
                 <PrivacyToggle />
@@ -121,13 +158,15 @@ function Shell() {
           <ConnectionBanner live={live} lastUpdated={lastUpdated} connected={connected} />
           <div key={route} className="qm-route-enter flex-1 px-4 pb-16 pt-4 md:px-6 md:pt-5">
             <Suspense fallback={<Loading what={t("boot.page")} h={260} />}>
-              <Page />
+              <PageErrorBoundary key={route + String(missing)}>{missing ? <NotFound /> : <Page />}</PageErrorBoundary>
             </Suspense>
           </div>
         </main>
       </div>
       <HelpDialog open={help} onOpenChange={setHelp} />
       <Welcome />
+      {/* incoming transfers must pop up on every page, from sign-in on */}
+      <Suspense fallback={null}><TransferOverlay /></Suspense>
     </SlotCtx.Provider>
   );
 }
@@ -135,7 +174,7 @@ function Shell() {
 function PrivacyToggle() {
   const [hidden, setHidden] = useState(privacyHidden());
   return <IconButton icon={hidden ? "eyeoff" : "eye"} label={t(hidden ? "common.priv.show" : "common.priv.hide")} aria-pressed={!hidden}
-    onClick={() => { setPrivacyHidden(!hidden); setHidden(!hidden); syncLegacy(); window.dispatchEvent(new Event("qm:privacy")); }} />;
+    onClick={() => { setPrivacyHidden(!hidden); setHidden(!hidden); window.dispatchEvent(new Event("qm:privacy")); }} />;
 }
 
 /** Calm but persistent: live data is stale while this shows, and it says since when. */

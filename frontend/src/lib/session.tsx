@@ -12,7 +12,9 @@ export const DASH = ["dashboard"] as const;
 const fetchDashboard = () => api.get<Dashboard>("/api/dashboard");
 
 interface Session {
-  authed: boolean | null; live: LiveState; lastUpdated: number | null;
+  /** null = still checking; "unreachable" = the gateway did not answer at all */
+  authed: boolean | null | "unreachable";
+  retryBoot: () => void; live: LiveState; lastUpdated: number | null;
   /** True while data is fresh enough to act on (live socket, or a recent poll). */
   connected: boolean;
   refresh: () => Promise<Dashboard | undefined>; signedIn: () => void; logout: () => Promise<void>;
@@ -22,7 +24,8 @@ export const useSession = () => useContext(Ctx);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
-  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [authed, setAuthed] = useState<boolean | null | "unreachable">(null);
+  const [bootTry, setBootTry] = useState(0);
   const [live, setLive] = useState<LiveState>("connecting");
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const stop = useRef<null | (() => void)>(null);
@@ -45,13 +48,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(() => end());
     let gone = false;
     api.get<{ authenticated: boolean }>("/api/me").then((me) => { if (gone) return; if (me.authenticated) begin(); else setAuthed(false); })
-      .catch(() => { if (!gone) setAuthed(false); });
+      .catch((e) => { if (!gone) setAuthed((e as { status?: number }).status === 0 ? "unreachable" : false); });
     return () => { gone = true; stop.current?.(); stop.current = null; };
-  }, [begin, end]);
+  }, [begin, end, bootTry]);
 
   const logout = useCallback(async () => { try { await api.post("/api/logout"); } catch { /* ignore */ } end(); }, [end]);
   const connected = live === "live" || live === "polling";
-  return <Ctx.Provider value={{ authed, live, lastUpdated, connected, refresh, signedIn: begin, logout }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ authed, retryBoot: () => { setAuthed(null); setBootTry((x) => x + 1); }, live, lastUpdated, connected, refresh, signedIn: begin, logout }}>{children}</Ctx.Provider>;
 }
 /** The shared dashboard snapshot. Never polled by Query: the socket keeps it fresh. */
 export function useDashboard() {

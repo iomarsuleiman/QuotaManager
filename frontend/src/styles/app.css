@@ -1,9 +1,6 @@
-/* Layer order: Tailwind's reset (base) < legacy page CSS < components < utilities.
-   web/css/legacy.css declares the same order, so whichever loads first agrees. */
-@layer theme, base, legacy, components, utilities;
 @import "tailwindcss";
 
-/* The variables themselves live in /css/tokens.css (shared with legacy pages). */
+/* The variables themselves live in /css/tokens.css (the one token file, OKLCH). */
 @theme inline {
   --font-sans: var(--font);
   --font-mono: var(--mono);
@@ -59,9 +56,6 @@
 }
 
 @layer components {
-  /* The legacy CSS has a 12-column page `.grid`; outside hosted legacy markup it must
-     not leak into Tailwind's `grid` utility (it broke the sidebar avatar). */
-  .grid:not(.qm-legacy .grid):not(.drawer .grid):not(.dialog .grid) { grid-template-columns: none; gap: 0; }
   .qm-num { font-variant-numeric: tabular-nums; }
   /* Identifiers (IP, MAC, domains) stay left-to-right inside Arabic text. */
   .qm-ltr { direction: ltr; unicode-bidi: isolate; }

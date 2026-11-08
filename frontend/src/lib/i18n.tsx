@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-// The dictionaries are the same files the legacy pages use (one source, Arabic/English parity
+// The dictionaries live in web/js/i18n/{en,ar}.js (one source, Arabic/English parity
 // is tested). Only the language in use is downloaded: each is its own chunk.
 export type Lang = "en" | "ar";
 const dicts: Partial<Record<Lang, Record<string, string>>> = {};

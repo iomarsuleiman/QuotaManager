@@ -125,6 +125,10 @@ def test_surface_ladder_rises_in_dark_mode():
 
 
 def test_no_decorative_background_effects_left():
-    base = (TOKENS.parent / "base.css").read_text(encoding="utf-8")
-    assert ".blob" not in base and "@keyframes drift" not in base and "#bg-particles" not in base
-    assert not (TOKENS.parent.parent / "js" / "core" / "particles.js").exists()
+    """The animated blobs/grid/particles cost ~7 % idle CPU on the gateway laptop; gone for good."""
+    web = TOKENS.parent.parent
+    css = "".join(p.read_text(encoding="utf-8") for p in web.rglob("*.css"))
+    assert ".blob" not in css and "@keyframes drift" not in css and "#bg-particles" not in css
+    assert not list(web.rglob("particles*.js"))
+    src = TOKENS.parent.parent.parent / "frontend" / "src"
+    assert not any("backdrop-blur" in p.read_text(encoding="utf-8") for p in src.rglob("*.tsx"))

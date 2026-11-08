@@ -98,7 +98,7 @@ export default function People() {
       )}
 
       <Card className="!p-0" title={undefined}>
-        <div className="hidden grid-cols-[28px_28px_minmax(0,1.4fr)_minmax(0,1.3fr)_120px_120px_40px] items-center gap-3 border-b border-line px-4 py-2 text-[12px] font-semibold text-fg-3 lg:grid" role="row">
+        <div className="hidden grid-cols-[28px_28px_minmax(0,1.4fr)_minmax(0,1.3fr)_120px_120px_40px] items-center gap-3 border-b border-line px-4 py-2 text-[12px] font-semibold text-fg-3 lg:grid" aria-hidden="false">
           <span><Checkbox checked={allSel ? true : sel.size ? "indeterminate" : false} onChange={(v) => setSel(v ? new Set(selectable.map((u) => u.id)) : new Set())} label={t("pp.sel.all")} /></span>
           <span /><span>{t("pp.col.user")}</span><span>{t("pp.col.usage")} (<Term k="wan">WAN</Term>)</span><span>{t("pp.col.status")}</span><span className="text-end">{t("pp.col.access")}</span><span />
         </div>

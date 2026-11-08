@@ -1,5 +1,5 @@
-// One icon family for the whole UI: the same 24px stroke paths the legacy pages use.
-import { icons } from "../../../../web/js/components/icons.js";
+// One icon family for the whole UI: 24px stroke paths, one weight.
+import { icons } from "./icons";
 
 const extra: Record<string, string> = {
   grip: "M9 6h.01|M15 6h.01|M9 12h.01|M15 12h.01|M9 18h.01|M15 18h.01",

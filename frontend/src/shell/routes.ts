@@ -2,23 +2,22 @@ import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
 // Stable route IDs (never translated labels) — URLs stay #/overview, #/people, …
 export type RouteId = "overview" | "people" | "quota" | "insights" | "internet" | "network" | "vpn" | "security" | "share" | "system";
-export interface RouteDef { id: RouteId; icon: string; group: GroupId; load: () => Promise<{ default: ComponentType }>; legacy?: boolean }
+export interface RouteDef { id: RouteId; icon: string; group: GroupId; load: () => Promise<{ default: ComponentType }> }
 export type GroupId = "main" | "net" | "tools" | "settings";
 export const GROUPS: { id: GroupId; label: string }[] = [
   { id: "main", label: "nav.main" }, { id: "net", label: "nav.net" }, { id: "tools", label: "nav.tools" }, { id: "settings", label: "nav.settings" },
 ];
-const legacy = (id: string) => () => import("../pages/Legacy").then((m) => ({ default: m.legacyPage(id) }));
 // Each page is its own chunk: the first paint only downloads the shell + the current page.
 export const ROUTES: RouteDef[] = [
   { id: "overview", icon: "overview", group: "main", load: () => import("../pages/Overview") },
   { id: "people", icon: "people", group: "main", load: () => import("../pages/People") },
   { id: "quota", icon: "quota", group: "main", load: () => import("../pages/Quota") },
   { id: "insights", icon: "insights", group: "main", load: () => import("../pages/Insights") },
-  { id: "internet", icon: "internet", group: "net", load: legacy("internet"), legacy: true },
+  { id: "internet", icon: "internet", group: "net", load: () => import("../pages/Internet") },
   { id: "network", icon: "network", group: "net", load: () => import("../pages/Network") },
-  { id: "vpn", icon: "vpn", group: "net", load: legacy("vpn"), legacy: true },
-  { id: "security", icon: "security", group: "net", load: legacy("security"), legacy: true },
-  { id: "share", icon: "share", group: "tools", load: legacy("share"), legacy: true },
+  { id: "vpn", icon: "vpn", group: "net", load: () => import("../pages/Vpn") },
+  { id: "security", icon: "security", group: "net", load: () => import("../pages/Security") },
+  { id: "share", icon: "share", group: "tools", load: () => import("../pages/Share") },
   { id: "system", icon: "system", group: "settings", load: () => import("../pages/System") },
 ];
 export const PAGES = Object.fromEntries(ROUTES.map((r) => [r.id, lazy(r.load)])) as Record<RouteId, LazyExoticComponent<ComponentType>>;

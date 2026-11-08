@@ -74,7 +74,7 @@ export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, onHelp,
       )}
 
       <div className={clsx("flex flex-col gap-px border-t border-line pt-2", rail && "w-full items-center")}>
-        <NavItem id="system" active={route === "system"} rail={!!rail} onNavigate={onNavigate} sortable={false} />
+        <ul className={clsx(rail && "flex w-full justify-center")}><NavItem id="system" active={route === "system"} rail={!!rail} onNavigate={onNavigate} sortable={false} /></ul>
         <FootButton icon="help" label={t("help.title")} rail={!!rail} onClick={onHelp} />
       </div>
       <div className={clsx("flex items-center gap-2.5 px-1.5", rail && "flex-col")}>
