@@ -58,7 +58,7 @@
 .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--gap)}
 .c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}.c6{grid-column:span 6}.c4{grid-column:span 4}
 @media (max-width:1180px){.c5,.c7,.c6,.c4{grid-column:span 12}}
-.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:var(--pad);box-shadow:var(--shadow);min-width:0}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:var(--pad);box-shadow:var(--shadow);min-width:0}
 :root[data-fx=rich][data-theme=dark] .card::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 38%)}
 .card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .card-h h3{font-size:14.5px;font-weight:600}

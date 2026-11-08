@@ -1228,16 +1228,150 @@ When a new device connects to the network as a guest before administrative appro
 
 ## The dashboard (web UI)
 
-The one and only dashboard, served at `/` (the former `/ui/` address and any old `/ui/...` path answer `307` → the same path at the root; the classic single-file UI and its gauge styles were removed). **No build step**: plain ES modules directly under `web/` — `index.html` loads `js/main.js?v=N` (bump `N` when shipping JS so browsers refetch), plus `css/`, `fonts/`, `js/` and `logo.svg`. Static files outside `/assets/` are served `Cache-Control: no-cache` (`/js/`, `/css/`, `/fonts/`, `/logo.svg`); the page itself is `no-store`.
+Served at `/` (old `/ui/...` paths answer `307` to the root). Since 0.6 the shell and the
+main pages are **React 18 + TypeScript**, built by **Vite** into static files that the
+Python server serves. **Node is a build tool only** — the gateway never runs Node.
+Pages that are not migrated yet are the original vanilla ES modules, hosted inside the
+React shell (progressive migration, see below).
 
-- **Shell** (`js/main.js`): hash router (`#/overview` … `#/system`), a tiny store (`core/store.js`) fed by the `/ws` dashboard snapshot, `core/api.js` (cookie session + `X-QM-CSRF`; 401 → login; English server messages that users meet — wrong password, wrong 2FA code, bare `HTTP nnn` — are mapped to the UI language in `nice()`), `core/i18n.js` (`t(key)`, AR/EN dictionaries in `js/i18n/`, numbers/MACs wrapped in LRI/PDI so RTL never reorders them), `core/prefs.js` (theme, accent, fx, density, language → `data-*` on `<html>`), the privacy eye (`quota_privacy_hide`, shared with the classic UI).
-- **Redraw rule** (`drawChanged`): a live snapshot rebuilds the page **except while an `input/select/textarea` has focus** (typing is never wiped). Consequence: after an Enter-submit that leaves the field focused, call `ctx.rerender()` and re-focus (see Share → text), otherwise the list stays stale until blur.
-- **Confirm convention**: destructive buttons are *armed* on the first tap (`.armed`, label "Tap again to confirm", auto-disarm after 4 s) and act on the second: kick/blacklist, enable/remove HTTPS, MAC allow/deny entries, Share "clear" / "delete all", firewall apply/revert, VPN node delete, 2FA off.
-- **Pages** (`js/pages/`): overview, people, quota, network, internet (+`internetWan`), security (+`securityDns`), vpn, insights, share (+`shareLive`), system (+`systemTabs`). DNS preset names/descriptions are translated client-side by preset id (`dns.cat.<id>.n|d`, falling back to the server text for unknown ids).
-- **Live transfer client** (`core/live.js`): one WebSocket to `/api/share/live/ws` opened at sign-in so an incoming request pops up on any page; protocol identical to the classic dashboard and `/share` (JSON control + 16-byte transfer-id framed binary).
-- **Public pages** (`/share`, `/milestone`, `/report`, guest portal, `spoof.html`) share `web/assets/pub.css` + `pub-theme.js` and follow the dashboard's light/dark choice.
-- **Limits**: no speedometer gauge (bundle ring + system themes replace it). The anti-DevTools script (`assets/detector.js`) closes headless browsers — abort that request in browser tests. There is a single admin session (`session_token`): signing in elsewhere, or changing the password, invalidates the others.
-- **Tests**: `tests/test_new_ui.py` (static serving, no inline scripts/external URLs, AR↔EN key parity, every used key exists). End-to-end behaviour was verified with Playwright against a real gateway inside network namespaces (client / "internet" / NAS veth pairs, real nftables); anything needing real PPPoE, sing-box, `tc` cake/fq_codel, a real Tailscale or phones must be tried on the box.
+```
+frontend/                 source (npm, Vite, Tailwind v4, Radix primitives, TanStack Query, dnd-kit)
+  src/main.tsx            entry: prefs → load ONE dictionary → render
+  src/shell/              App (login + 2FA, layout, title-bar action slot, connection banner,
+                          help glossary), Sidebar (+ SortableNav, lazy), routes (lazy chunks,
+                          prefetch, saved order), Welcome (first-run, 2 steps)
+  src/pages/              Overview, People, Quota, Network, Insights, System, Legacy (host)
+  src/components/ui/      design-system parts: primitives (Button, IconButton, Badge, Meter,
+                          Card, Banner, Term, KV, Stat, Loading/Empty), forms (Field, TextField,
+                          NumberField, Segmented, Select, Combobox, Switch/SwitchRow), slider,
+                          checkbox, menu, overlays (Dialog, ConfirmDialog, adaptive Sheet,
+                          toasts), charts (LineChart, BarChart, RankList), Icon
+  src/components/domain/  PersonSheet/DeviceSheet, DailyPlan, AddDialogs, TopUp, Renewal
+  src/lib/                api (CSRF, plain-language errors, AbortSignal), session (memory-only
+                          query cache, one socket, first-data path), live (WebSocket + poll
+                          fallback, hidden-tab buffering), actions (non-optimistic mutations),
+                          queries, prefs, i18n bridge, format, types
+web/index.html + web/app/ BUILD OUTPUT (committed): hashed files + .gz twins
+web/css/tokens.css        the ONE token file (React + legacy), web/css/legacy.css (layered)
+web/js/                   vanilla pages still in use: internet, security, vpn, share,
+                          systemTabs (+ their helpers), i18n/en.js + ar.js (shared dictionaries)
+```
+
+**Build**: `cd frontend && npm ci && npm run build` writes `web/index.html` and
+`web/app/*` (old hashed files are removed first; every `.js/.css` ≥ 1 KB gets a
+`.gz` twin). Commit the result. CI (`frontend` job) type-checks, runs the Vitest
+unit tests, rebuilds and fails if the committed build differs. Dev: run the
+gateway on 8080 and `npm run dev` (Vite proxies `/api`, `/ws`, `/js`, `/css`, `/fonts`).
+
+### Design system (tokens)
+`web/css/tokens.css`, OKLCH, dark tuned separately from light:
+4 surfaces (`--bg-frame` sidebar · `--bg-canvas` page · `--bg-surface` cards ·
+`--bg-raised` popovers/dialogs), 2 strokes (`--stroke-subtle`, `--stroke-strong` =
+input borders, ≥3:1), 3 text tiers, one calm slate-blue accent ramp
+`--accent-50…900` (light uses 600 for buttons, dark 400), semantic
+`--success/--warning/--danger/--info` (+ `-soft` chip backgrounds) and a 6-hue
+chart ramp. Legacy variable names (`--bg`, `--surface`, `--text-2`, `--accent-2`…)
+are aliases of the semantic tokens, so hosted vanilla pages share the palette.
+`tests/test_design_tokens.py` computes the real WCAG contrast of every text/state
+pair in both themes (AA), focus/borders/chart marks (3:1) and the dark elevation
+ladder. Tailwind maps the tokens (`bg-surface`, `text-fg-2`, `border-line-strong`,
+`bg-accent`…); never hard-code a hex value in a component.
+Rules: color only where the data warrants it (status, risk); badges always carry
+an icon + words; download/upload are solid vs dashed (not green/red); no
+decorative blobs/particles/glows (removed); motion = short transform/opacity,
+reduced by the OS setting or Appearance → Animation.
+
+### Inputs (use the control the value deserves)
+`NumberField`: visible unit, string draft while typing (empty never becomes 0),
+validated on blur (`min/max/integer/decimals`, Arabic-Indic digits and `,` accepted,
+exponent/hex rejected), no mouse-wheel changes, optional −/+ stepper and preset
+chips. `SliderField`: bounded values only (VPN % 0–100), synced number box, nothing
+applied while dragging. `Segmented` for 2–6 fixed modes (renewal, theme, window),
+`Select` (styled native) for short lists, `Combobox` (searchable listbox) for
+people/devices. Identifiers (MAC/IP/DNS) are `TextField mono` (LTR, no spellcheck)
+with inline validation. Renewal: mode (day / month end / manual / bill day) +
+day 1–31, mapped to the backend's `(period_type, reset_day)`; "0" is never shown.
+
+### Saving, confirming, invisible states
+- **Never optimistic for the gateway**: `useAction` waits for the server, re-reads
+  the dashboard, then toasts. Shaping shows *Applying → Applied* only when the
+  snapshot reports `shaping.applied`. Only appearance prefs and the sidebar order
+  apply instantly (local).
+- **Risky actions** use `ConfirmDialog`: what changes / who is affected (names,
+  device counts) / how to undo / connection impact, then a literal CTA
+  ("Block Kareem", "Start new period"). Block is a visible text button, never
+  hover-only. Bulk block/unblock on People lists every affected person.
+- **Connection**: one WebSocket for the whole app; when it drops a persistent
+  banner says *Reconnecting* / *Can't reach the gateway* with the last update
+  time and Retry. A hidden tab never re-renders; it applies the newest snapshot
+  once when visible again.
+- **Drafts**: sheets/forms keep a local draft and follow the server only while
+  untouched (the old "never rebuild under the cursor" rule, now structural).
+
+### Mobile editing sheet (`Sheet`)
+Bottom sheet below 768 px (side panel above), Radix Dialog underneath (focus trap,
+Escape, focus restore, scroll lock). Height follows `visualViewport` (`--qm-vvh`,
+`--qm-kb`), so the footer (Save/Cancel) stays above the on-screen keyboard; the
+focused field and its helper/error text are scrolled into view inside the sheet's
+own scroller (again after the keyboard animation). Inputs are 16 px on phones (no
+iOS zoom), safe-area padding at the bottom, swipe-down only on the grip, and
+unsaved edits ask "Keep editing / Discard" on close, Escape, backdrop or swipe.
+
+### Sidebar
+Groups Main · Network & security · Tools, then System/Help pinned at the bottom.
+Each row has a six-dot handle (visible on hover/focus, always in *Customize*):
+drag with mouse, long-press on touch, Space + arrows on the keyboard (screen-reader
+announcements), or the explicit ↑/↓ buttons in Customize mode. Order is saved per
+browser as `{v:1, groups:{…}}` of stable route IDs in the existing prefs key
+(`qm.ui.prefs.v2`); new routes slot into their default place; one-click reset.
+Collapsed rail = icons with tooltips. Phones get a drawer.
+
+### Progressive migration (legacy host)
+`pages/Legacy.tsx` imports `/js/pages/<id>.js?v=N` on demand and mounts it with
+the same `ctx` contract (`dashboard, live, getDashboard, refresh, rerender, touch`).
+The shared core modules (`/js/core/i18n.js`, `/js/components/drawer.js`) MUST be
+imported by the exact URL the pages use (no `?v=`), or the browser creates a
+second instance and the page ignores the language switch (regression-tested).
+`web/css/legacy.css` puts the old CSS in the `legacy` cascade layer: above
+Tailwind's reset, below components/utilities. Migrate a page = write
+`frontend/src/pages/X.tsx`, switch its route in `shell/routes.ts`, delete the
+vanilla file, bump nothing else.
+
+### Performance and caching
+- First paint loads the shell chunk (~104 KB gzip), one dictionary (~20 KB) and
+  the current page; every page is its own chunk; drag-and-drop (~16 KB) loads on
+  first sidebar interaction; the slider/menu code only with their pages.
+- After the first page, one or two likely next pages are prefetched when the
+  browser is idle (skipped on Save-Data, 2G, ≤2 CPU cores, hidden tab); hovering
+  or focusing a sidebar link prefetches that page.
+- `/app/*` = content-hashed → `Cache-Control: public, max-age=31536000,
+  immutable`, served from the precompressed `.gz` (no gzip CPU on the gateway).
+  `index.html` and all `/api` stay `no-store`; authenticated data lives in memory
+  only (TanStack Query) and is cleared on logout/401 — never localStorage or a
+  service worker.
+- Live speeds poll only while a page that shows them is open and the tab is
+  visible (5 s, Insights live 3 s); history queries are cached 60 s and cancelled
+  when the selection changes. The dashboard itself is never polled while the
+  socket is healthy.
+- Measured (Playwright, headless Chromium, 13 seeded devices; old → new):
+  first contentful paint 152 → 84 ms (LAN) and 2.9 → 1.5 s (1.6 Mbps/150 ms);
+  cold load 52 → 20 requests, 558 → 312 KB transferred (incl. fonts);
+  warm reload 42 → 10 KB; DOM nodes 10.5k → 3.2k; idle main-thread 0.6 % → 0.4 %
+  (old default animated background: 7.4 %); route switch → painted ≈ 30 ms in
+  both; heap flat over a 3-minute soak (9.5 MB). Server snapshot
+  (`/api/dashboard`): 8.5 ms at 0 devices, 10.7 ms / 145 KB at 100.
+
+### Lessons learned (0.6)
+- Tailwind 4.0.0's Vite plugin crashed on `@layer` + `@theme inline`; 4.1.x works.
+- A sheet's form state must be created when the item exists (mount the body keyed
+  by id), not from an empty object first — it crashed on `undefined.trim()`.
+- Translation keys are global: `sh.*` already belonged to Share; the sheet uses `sheet.*`.
+
+**Tests**: `tests/test_new_ui.py` (serving, immutable+gzip assets, CSP-clean, no
+external URLs, no raw-HTML sinks, AR↔EN parity, every key used exists, draft and
+keyboard contracts, non-optimistic actions, legacy host), `tests/test_design_tokens.py`
+(contrast), `frontend/src/**/*.test.ts` (Vitest: number parsing, sidebar order merge,
+renewal mapping, prefs migration, identifiers, chart helpers).
 
 ---
 
@@ -1872,13 +2006,16 @@ QuotaManager/
 ├── api/
 │   ├── app.py                # FastAPI factory: REST + /ws + static mount
 │   └── schemas.py            # pydantic request models
+├── frontend/               # dashboard SOURCE: React + TypeScript + Vite (build → web/)
+│   ├── package.json, package-lock.json, vite.config.ts, tsconfig.json, index.html
+│   └── src/                  # shell/, pages/, components/{ui,domain}/, lib/, styles/app.css
 ├── web/
-│   ├── index.html            # the dashboard shell (loads js/main.js)
-│   ├── css/  fonts/  js/     # tokens/base/layout/components CSS, self-hosted fonts,
-│   │                         #   js/core (api, ws, i18n, prefs, store, live), js/components,
-│   │                         #   js/pages (overview, people, quota, network, internet,
-│   │                         #   security, vpn, insights, share, system + sub-pages),
-│   │                         #   js/i18n ar+en; see "The dashboard (web UI)"
+│   ├── index.html            # BUILT entry (from frontend/index.html)
+│   ├── app/                  # BUILT hashed chunks + .gz twins (served immutable)
+│   ├── css/  fonts/  js/     # tokens.css (shared design tokens), legacy.css (cascade layer),
+│   │                         #   self-hosted fonts, js/i18n ar+en (shared dictionaries),
+│   │                         #   vanilla pages still hosted: internet, security, vpn,
+│   │                         #   share, systemTabs (+ helpers); see "The dashboard (web UI)"
 │   ├── logo.svg
 │   ├── milestone.html        # public household page: own usage + per-device split,
 │   │                         #   one-time 50/75/100% milestone acknowledge
@@ -1908,7 +2045,8 @@ QuotaManager/
     ├── test_topology.py      # detect_ppp / check_internet probes (fake `ip`)
     ├── test_vpn.py           # VpnManager, link parsing, config generation, and REST API
     ├── test_tailscale.py     # Tailscale status/states/install/connect, API routes, firewall rule
-    ├── test_new_ui.py        # dashboard at /, /ui/ redirect, no inline script/external URL, AR/EN key parity
+    ├── test_new_ui.py        # dashboard at /, immutable+gzip /app, no inline script/external URL, AR/EN key parity
+    ├── test_design_tokens.py # WCAG contrast of the OKLCH tokens, both themes
     ├── test_flows.py         # live-traffic destination naming (DNS names, RDAP owners)
     ├── test_ipv6_setup.py    # dual-stack host setup (SLAAC/DHCPv6 on a ULA, NAT66)
     ├── test_ipv6_probe.py    # IPv6 reachability probe + fallback state

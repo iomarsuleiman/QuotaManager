@@ -1,3 +1,4 @@
+import { parseInt2 } from "../core/validate.js";
 import { h, icon } from "../core/dom.js";
 import { t, num, iso } from "../core/i18n.js";
 import { api } from "../core/api.js";
@@ -92,8 +93,11 @@ export default function internet(ctx) {
     armedRenew = false; await run(() => api.post("/api/wan/renew"), t("i.renewed"))();
   };
   if (!draft) draft = { enabled: !!w.renew_enabled, minutes: w.renew_minutes || 15 };
-  const minutes = h("input", { class: "input", type: "number", min: "5", step: "1", value: String(draft.minutes), oninput: (e) => { draft.minutes = parseInt(e.target.value || "15", 10); } });
-  const saveAuto = run(async () => { await api.post("/api/wan/renew-config", { enabled: draft.enabled, minutes: Math.max(5, draft.minutes || 15) }); draft = null; }, t("q.saved"));
+  // whole minutes, 5 – 1440; what was typed stays, an invalid value is explained instead of replaced
+  const minutes = h("input", { class: "input ltr", type: "text", inputmode: "numeric", value: String(draft.minutes), "aria-describedby": "wan-min-h",
+    oninput: (e) => { draft.minutesRaw = e.target.value; const r = parseInt2(e.target.value, 5, 1440); e.target.setCustomValidity(r.error || ""); if (!r.error) draft.minutes = r.value; } });
+  const presets = h("div", { class: "fa", style: { "margin-top": "8px" } }, [5, 15, 30, 60].map((m) => h("button", { type: "button", class: "btn ghost sm", onclick: () => { draft.minutes = m; ctx.touch(); } }, `${m} ${t("i.min.unit")}`)));
+  const saveAuto = run(async () => { const r = parseInt2(minutes.value, 5, 1440); if (r.error) { minutes.reportValidity(); throw new Error(r.error); } await api.post("/api/wan/renew-config", { enabled: draft.enabled, minutes: r.value }); draft = null; }, t("q.saved"));
 
   const v6 = x.v6;
   const probe = run(async () => { await api.post("/api/network/ipv6/probe"); }, t("i.v6.probed"));
@@ -111,7 +115,7 @@ export default function internet(ctx) {
       h("header", { class: "card-h" }, h("h3", {}, t("i.auto"))),
       isWan ? h("div", {}, h("div", { class: "row-sw", style: { "margin-bottom": "14px" } }, h("div", {}, h("b", {}, t("i.auto.on"))),
         sw(draft.enabled, t("i.auto.on"), () => { draft.enabled = !draft.enabled; ctx.touch(); })),
-        field(t("i.auto.min"), minutes), h("div", { class: "fa", style: { "margin-top": "16px" } }, h("button", { type: "button", class: "btn primary sm", onclick: saveAuto }, t("i.save"))))
+        field(t("i.auto.min"), minutes, t("i.auto.min.h")), presets, h("div", { class: "fa", style: { "margin-top": "16px" } }, h("button", { type: "button", class: "btn primary sm", onclick: saveAuto }, t("i.save"))))
         : h("p", { class: "sub" }, t("i.auto.na"))),
     h("section", { class: "card c6" },
       h("header", { class: "card-h" }, h("h3", {}, t("i.v6")), v6 ? chip(v6.wan_ipv6_active ? "ok" : "", v6.wan_ipv6_active ? t("i.v6.active") : t("i.v6.inactive")) : null),

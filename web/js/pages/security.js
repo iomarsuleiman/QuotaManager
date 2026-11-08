@@ -1,3 +1,4 @@
+import { parseInt2, isIPv4, isCidr4, flag } from "../core/validate.js";
 import { h, icon } from "../core/dom.js";
 import { t, num, iso } from "../core/i18n.js";
 import { api } from "../core/api.js";
@@ -31,7 +32,10 @@ const ruleStr = (r) => {
   return p.join(" ") || t("fw.any");
 };
 const field = (label, control, hint) => h("div", { class: "field" }, h("label", {}, label), control, hint ? h("span", { class: "sub" }, hint) : null);
-const nIn = (get, set, min = 0) => h("input", { class: "input", type: "number", min: String(min), step: "any", value: String(get()), oninput: (e) => { set(+e.target.value || 0); fw.dirty = true; } });
+// Firewall counters are whole numbers: keep what was typed, apply only valid values, say why otherwise.
+const nIn = (get, set, min = 0) => h("input", { class: "input", type: "text", inputmode: "numeric", dir: "ltr", value: String(get()),
+  oninput: (e) => { const r = parseInt2(e.target.value, min, 1000000); e.target.setCustomValidity(r.error || ""); e.target.setAttribute("aria-invalid", r.error ? "true" : "false"); if (!r.error) { set(r.value); fw.dirty = true; } },
+  onblur: (e) => { if (e.target.validationMessage) e.target.reportValidity(); } });
 
 function ruleDialog(ctx, idx) {
   const r = idx >= 0 ? { ...fw.cfg.rules[idx] } : { name: "", chain: "forward", action: "deny", src: "", dst: "", protocol: "tcp", src_port: 0, dst_port: 0, log: true };
@@ -41,12 +45,17 @@ function ruleDialog(ctx, idx) {
   const proto = sel([["", t("fw.any")], ["tcp", "TCP"], ["udp", "UDP"], ["icmp", "ICMP"]], r.protocol || "");
   const src = h("input", { class: "input ltr", value: r.src && r.src !== "0.0.0.0/0" ? r.src : "", placeholder: "192.168.2.0/24", spellcheck: "false" });
   const dst = h("input", { class: "input ltr", value: r.dst && r.dst !== "0.0.0.0/0" ? r.dst : "", placeholder: "8.8.8.8", spellcheck: "false" });
-  const sp = h("input", { class: "input", type: "number", min: "0", max: "65535", value: String(r.src_port || 0) }), dp = h("input", { class: "input", type: "number", min: "0", max: "65535", value: String(r.dst_port || 0) });
+  const port = (v) => h("input", { class: "input ltr", type: "text", inputmode: "numeric", value: String(v || 0) });
+  const sp = port(r.src_port), dp = port(r.dst_port);
   openDialog({ title: idx >= 0 ? t("fw.rule.edit") : t("fw.rule.add"), submitLabel: t("fw.keep"),
     content: [field(t("fw.name"), name), h("div", { class: "form-row" }, field(t("fw.action"), action), field(t("fw.chain"), chain)), h("span", { class: "sub" }, t("fw.chain.hint")),
       h("div", { class: "form-row" }, field(t("fw.src"), src), field(t("fw.dst"), dst)), field(t("fw.proto"), proto), h("div", { class: "form-row" }, field(t("fw.sport"), sp), field(t("fw.dport"), dp))],
     onSubmit: async () => {
-      const nr = { name: name.value.trim(), action: action.value, chain: chain.value, src: src.value.trim() || "0.0.0.0/0", dst: dst.value.trim() || "0.0.0.0/0", protocol: proto.value, src_port: +sp.value || 0, dst_port: +dp.value || 0, log: true };
+      // 0 = any port; addresses are IPv4 or IPv4/prefix (the firewall is IPv4-only)
+      for (const el of [src, dst]) if (!flag(el, el.value.trim() && !isCidr4(el.value) ? t("fw.addr.bad") : "")) throw new Error(t("fw.addr.bad"));
+      const spv = parseInt2(sp.value, 0, 65535), dpv = parseInt2(dp.value, 0, 65535);
+      if (!flag(sp, spv.error) || !flag(dp, dpv.error)) throw new Error(t("fw.port.bad"));
+      const nr = { name: name.value.trim(), action: action.value, chain: chain.value, src: src.value.trim() || "0.0.0.0/0", dst: dst.value.trim() || "0.0.0.0/0", protocol: proto.value, src_port: spv.value, dst_port: dpv.value, log: true };
       if (idx >= 0) fw.cfg.rules[idx] = nr; else (fw.cfg.rules = fw.cfg.rules || []).push(nr);
       fw.dirty = true; ctx.touch(); return true;
     } });
@@ -55,13 +64,16 @@ function fwdDialog(ctx, idx) {
   const f = idx >= 0 ? { ...fw.cfg.port_forwards[idx] } : { name: "", protocol: "tcp", source_port: 8080, target_ip: "", target_port: 8080 };
   const name = h("input", { class: "input", value: f.name || "" });
   const proto = h("select", { class: "select" }, ["tcp", "udp"].map((p) => h("option", { value: p, selected: f.protocol === p }, p.toUpperCase())));
-  const sp = h("input", { class: "input", type: "number", min: "1", max: "65535", required: true, value: String(f.source_port) });
-  const tp = h("input", { class: "input", type: "number", min: "1", max: "65535", required: true, value: String(f.target_port) });
+  const sp = h("input", { class: "input ltr", type: "text", inputmode: "numeric", required: true, value: String(f.source_port) });
+  const tp = h("input", { class: "input ltr", type: "text", inputmode: "numeric", required: true, value: String(f.target_port) });
   const ip = h("input", { class: "input ltr", required: true, value: f.target_ip || "", placeholder: "192.168.2.50", spellcheck: "false" });
   openDialog({ title: idx >= 0 ? t("fw.fwd.edit") : t("fw.fwd.add"), submitLabel: t("fw.keep"),
     content: [field(t("fw.name"), name), h("div", { class: "form-row" }, field(t("fw.proto"), proto), field(t("fw.fwd.sport"), sp)), h("div", { class: "form-row" }, field(t("fw.fwd.ip"), ip), field(t("fw.fwd.tport"), tp))],
     onSubmit: async () => {
-      const nf = { ...f, name: name.value.trim(), protocol: proto.value, source_port: +sp.value, target_ip: ip.value.trim(), target_port: +tp.value };
+      const spv = parseInt2(sp.value, 1, 65535), tpv = parseInt2(tp.value, 1, 65535);
+      if (!flag(sp, spv.error) || !flag(tp, tpv.error)) throw new Error(t("fw.port.bad"));
+      if (!flag(ip, isIPv4(ip.value) ? "" : t("fw.addr.bad"))) throw new Error(t("fw.addr.bad"));
+      const nf = { ...f, name: name.value.trim(), protocol: proto.value, source_port: spv.value, target_ip: ip.value.trim(), target_port: tpv.value };
       if (idx >= 0) fw.cfg.port_forwards[idx] = nf; else (fw.cfg.port_forwards = fw.cfg.port_forwards || []).push(nf);
       fw.dirty = true; ctx.touch(); return true;
     } });

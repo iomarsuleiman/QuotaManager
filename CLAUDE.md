@@ -17,7 +17,7 @@ network path; Python only configures it and does the accounting.
 - **dnsmasq**: DHCP (+ DHCPv6/RA), DNS forwarder, domain filtering, query log.
 - **Python (FastAPI + asyncio, single process `run.py`)**: one maintenance tick every
   15 s, REST API + `/ws`, SQLite (aiosqlite).
-- **Web UI**: static files in `web/` (vanilla JS, no build step).
+- **Web UI**: React + TypeScript source in `frontend/` built by Vite into `web/index.html` + `web/app/` (committed; no Node on the box). Pages not migrated yet are vanilla modules in `web/js/pages/` hosted by the React shell.
 - **sing-box** child process for the built-in VPN (Clash API on 127.0.0.1:9090).
 
 ## 2. Golden rules (each one is a past incident)
@@ -58,10 +58,12 @@ network path; Python only configures it and does the accounting.
     Never move such state into the project folder or `config.yaml`. `config.yaml` is only
     seed/defaults; the setup script backs it up (`config.yaml.prev`) and carries over every
     section it does not write (`firewall`, `dns_filter`, `vpn_share`, `network`, ...).
-13. **Never let the browser run stale UI.** `/assets/*` are served `Cache-Control: no-cache`
-    and `index.html` references `js/main.js?v=N` (JS/CSS/fonts under `/js/`, `/css/`, `/fonts/` are `no-cache` too) — bump N when you change them
-    (the page itself is `no-store`). A fixed `?v=` + no cache header made an updated server
-    keep serving the old UI from the browser cache.
+13. **Never let the browser run stale UI.** The built dashboard lives in `web/app/` with
+    content-hashed names (served `immutable`, from a `.gz` twin); `index.html` is `no-store`, so
+    a rebuild = new names. Always rebuild (`cd frontend && npm run build`) and commit `web/`
+    after changing `frontend/src` (CI fails on a stale build). Legacy `/js/`, `/css/`, `/fonts/`
+    stay `no-cache`; bump `LEGACY_V` in `frontend/src/pages/Legacy.tsx` when you change a hosted
+    vanilla page. A fixed `?v=` + no cache header once made browsers run an old UI.
 14. **Secrets**: `quota-manager-secret.asc` (PGP *private* key) is git-ignored — never copy it
     to a server, never commit it. `data/`, `logs/` hold the admin hash and usage.
 
@@ -130,7 +132,9 @@ nftables.conf, IPv6 host config).
 | `quota/tailscale.py` | built-in Tailscale remote access (status / install / connect / disconnect) | |
 | `scripts/setup_gateway_kali.sh` | first install: packages, sysctl, dnsmasq, NAT, systemd unit (`CONF_DIR=/etc/quota-gateway`) | day-2 changes — those belong in the app |
 | `scripts/topology.sh` | runtime LAN/WAN applier invoked by the panel | |
-| `web/index.html`, `web/js/` (`main.js`, `pages/*`, `core/*`, `i18n/{en,ar}.js`), `web/css/` | the dashboard (ES modules, no build; one page file per tab) | |
+| `frontend/src/` (`shell/`, `pages/`, `components/{ui,domain}/`, `lib/`) | the dashboard: React + TS, one lazy chunk per page, design-system components | network logic (→ API) |
+| `web/index.html`, `web/app/` | BUILD OUTPUT of `frontend/` (commit it) | hand edits |
+| `web/js/pages/{internet,security,vpn,share,systemTabs}.js`, `web/js/i18n/{en,ar}.js`, `web/css/tokens.css` | vanilla pages still hosted by the React shell; the shared dictionaries; the one design-token file | |
 | `packaging/DEBIAN/` | `.deb` build | |
 | `tests/` | one `test_<module>.py` per module (+ `test_ci`, `test_packaging`, `test_web_ui`) | |
 
@@ -165,7 +169,7 @@ dataclass field with a default there, then the commented line in `config.yaml`, 
 | VPN behaviour | config text → `vpn_parser.generate_sing_box_config`; process/state → `vpn_manager.py`; who goes through the tunnel → `vpnshare.py` + `run.py::_sync_vpn_share`; node editing UI → `app.js` `loadVpn*/renderVpn*` |
 | DNS filtering | `dns_rules.py` (render) + `run.py::_sync_dns_rules`; never write dnsmasq files from the API layer |
 | Quota/blocking rule | `service.py` (`compute_allowances`, `evaluate_blocks`) — kernel gets the result via tick step 4 |
-| Dashboard tab/card | `web/js/pages/<tab>.js` (+ `core/*` helpers); every user-visible string goes through `t("key")` in BOTH `web/js/i18n/en.js` and `ar.js` (`tests/test_new_ui.py` checks parity); bump `main.js?v=N` in `web/index.html` |
+| Dashboard tab/card | `frontend/src/pages/<Tab>.tsx` using `components/ui/*` (never raw hex colours; tokens only); every user-visible string goes through `t("key")`/`tf()` in BOTH `web/js/i18n/en.js` and `ar.js` (`tests/test_new_ui.py` checks parity); gateway changes via `useAction` (never optimistic); then `cd frontend && npm run build` and commit `web/` |
 | Live traffic destinations | `quota/flows.py` (sampling/labels) → `run.py` tick (`self.flows`, `EngineSnapshot.flows_by_mac`) → `history_analytics` (`top_destinations`) → `web/js/pages/insights.js` |
 | Live traffic / LED | `history_analytics.get_live_traffic_analytics`; presence in `run.py::_collect_neigh_active`, `_maybe_latency_tick`, `_latency_active_ips` |
 | Release | bump `quota/version.py` + CHANGELOG section; tags only for a real release (see §7) |
@@ -180,6 +184,7 @@ python3.12 -m venv .venv && .venv/bin/pip install -r requirements-linux.txt pyte
 .venv/bin/pyflakes api core quota tests run.py
 .venv/bin/pytest -q --timeout=60            # if a sandbox segfaults on the full run, run per file
 for f in $(find web/js -name '*.js'); do node --check "$f"; done
+(cd frontend && npm ci && npx tsc -b && npx vitest run && npm run build)   # then commit web/
 # Dashboard (web/, served at /): ES modules, no build step. tests/test_new_ui.py guards it
 # (no inline script/handlers, self-hosted fonts only, ar/en key parity, imports resolve).
 bash -n scripts/setup_gateway_kali.sh scripts/topology.sh scripts/test_pppoe.sh

@@ -6,6 +6,22 @@ language: what changed and how it affects you.
 _(For developers: versions live in `quota/version.py`; a release tag must
 match it. Release notes are composed from a version's section below.)_
 
+## [Unreleased]
+
+Changed:
+- A redesigned dashboard: calm neutral colours in light and dark, one quiet accent, and colour used only where it means something (online, warning, blocked). The moving background and glows are gone, so the panel is lighter on the gateway laptop.
+- The Overview answers three questions first: is the internet working, how much is left (with the reset date and the pace), and what needs your attention.
+- People is now a proper list: search, filters with counts, sorting, "Clear filters", and selecting several people to block or restore them together (it always shows who will be affected before doing it).
+- Editing a person or device opens a sheet from the bottom on phones (a side panel on computers). It stays above the keyboard, keeps what you typed while live numbers update, and asks before throwing away unsaved changes.
+- Number boxes show their unit (GB, Mbps, days, %), have − / + buttons and common values, and explain mistakes next to the box instead of silently turning them into 0. The renewal day is now "On a day / Month end / Manually" plus the day.
+- Blocking, removing, starting a new period and other risky actions now say what changes, who is affected and how to undo it before you confirm.
+- Saving gateway settings says "Applying…" and only says "Applied" once the gateway confirms.
+- The sidebar can be reordered: drag the ⠿ handle, long-press on a phone, use the keyboard, or "Customize sidebar". Your order is kept in this browser and can be reset.
+- A Help glossary explains WAN, LAN, DNS, MAC, quota period and more; dotted words open their explanation anywhere.
+- When the gateway can't be reached, a banner says so with the time of the last update, instead of showing old numbers as if they were live.
+- Faster: the first screen appears about twice as fast on slow Wi-Fi, and later visits download only a few KB.
+- Arabic: new and reworded text in plain, natural Egyptian Arabic.
+
 ## [0.5.3] — 2026-11-06
 
 Added:

@@ -144,7 +144,7 @@
 }
 
 /* ---------- drawer / toast ---------- */
-.scrim{position:fixed;inset:0;background:var(--scrim);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:50;animation:fade .18s ease-out}
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:50;animation:fade .18s ease-out}
 @keyframes fade{from{opacity:0}}
 .drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(430px,100%);z-index:51;display:flex;flex-direction:column;background:var(--surface);border-inline-start:1px solid var(--line-2);box-shadow:-30px 0 60px -30px rgba(0,0,0,.6);animation:inEnd .24s cubic-bezier(.2,.8,.2,1)}
 @keyframes inEnd{from{transform:translateX(calc(40px*var(--dir)));opacity:0}}
@@ -193,7 +193,7 @@
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;color:var(--text-3);font-weight:500}
-.input,.select{height:40px;padding:0 12px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line-2);width:100%;font-size:13.5px}
+.input,.select{height:40px;padding:0 12px;border-radius:var(--radius);background:var(--surface-2);border:1px solid var(--line-2);width:100%;font-size:13.5px}
 textarea.input{height:auto;min-height:120px;padding:10px 12px;resize:vertical;font-family:var(--mono);font-size:12.5px;direction:ltr;text-align:left}
 .input:focus,.select:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 .input.ltr{direction:ltr;text-align:left}
@@ -321,7 +321,7 @@ textarea.input{height:auto;min-height:120px;padding:10px 12px;resize:vertical;fo
 .ins-dom:first-child{border-top:0}
 .ins-tl{display:flex;align-items:flex-end;gap:4px;height:220px;padding-top:8px}
 .ins-col{flex:1;min-width:0;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
-.ins-col i{width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,var(--accent),var(--accent-2));min-height:3px}
+.ins-col i{width:100%;border-radius:5px 5px 2px 2px;background:var(--accent);min-height:3px}
 .ins-col span{font-size:10px;color:var(--text-3);white-space:nowrap}
 
 .dropz{display:flex;flex-direction:column;align-items:center;gap:10px;padding:28px 18px;text-align:center;border:2px dashed color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:var(--r-sm,16px);transition:background .15s,border-color .15s}
