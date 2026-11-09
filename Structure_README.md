@@ -2421,8 +2421,11 @@ native select/datalist elements anywhere in dashboard source.
 
 ### Sidebar and field alignment follow-up
 
-`Sidebar` uses one flexing scroll region for navigation and the quota summary,
-with non-shrinking header/footer controls. System and Help share a footer row.
+`Sidebar` uses one flexing scroll region for navigation, with non-shrinking
+header/footer controls. The quota summary is pinned outside the scroller and
+retains a compact percentage/meter in rail mode. System and Help are ordinary
+page routes in the settings group; Help is lazy-loaded at `#/help` and retains
+the searchable glossary. The old footer Help callback and modal are removed.
 Route/mode changes reveal the active item inside that region without scrolling
 the document. Reordering is an explicit local mode; its lazy DnD module is
 loaded on request, with retry feedback on failure. Handles occupy their own
@@ -2443,3 +2446,31 @@ Follow-up verification includes 24 frontend tests, 50 Python UI/token tests,
 and 60 automated Chromium layouts across all dashboard routes, English/Arabic,
 light/dark themes and desktop/mobile sizes. The full inventory is in
 `docs/fork-sync-2026-11-09.md`.
+
+
+### Complete fork comparison
+
+`docs/fork-vs-original.md` records the current fork-specific changes against
+original commit `ed31b088247cbb13a0b202b215ac84cb66de0622`, separately from the
+upstream changes imported during synchronization. Its complete net file
+inventory is `docs/fork-vs-original-files.tsv`, generated with Git rename
+detection disabled so every added, modified or deleted path appears explicitly.
+
+
+### Local test sessions
+
+The inherited authentication implementation stores a single `session_token`
+setting and rotates it in `_issue_session` on each successful password/passkey
+login. A login by another client invalidates the earlier client's cookie.
+Repeated browser-audit logins against the user's development database caused
+the reported sign-outs; this behavior is not Windows-specific.
+
+Run automated browser checks against a separate instance and data directory:
+
+```powershell
+.venv/Scripts/python scripts/run_local.py --port 8081 --data-dir data/layout-test
+```
+
+Keep the user-facing instance on port 8080 with data/local-test. Cookies are
+not port-scoped, so automated checks must also use their own browser context.
+This isolates login/session rotation without changing production auth policy.

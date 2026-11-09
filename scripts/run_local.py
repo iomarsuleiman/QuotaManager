@@ -23,8 +23,8 @@ from quota.local_share import LocalShareManager
 from quota.service import QuotaService
 
 
-async def serve(port: int) -> None:
-    data = ROOT / "data" / "local-test"
+async def serve(port: int, data: Path) -> None:
+    data = data.resolve()
     data.mkdir(parents=True, exist_ok=True)
     database = Database(data / "quota.db")
     await database.connect()
@@ -44,5 +44,7 @@ async def serve(port: int) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--data-dir", type=Path, default=ROOT / "data" / "local-test",
+                        help="Database/share directory; use a separate directory for automated tests")
     args = parser.parse_args()
-    asyncio.run(serve(args.port))
+    asyncio.run(serve(args.port, args.data_dir))

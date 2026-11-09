@@ -9,7 +9,6 @@ import { usePrefs, setPref, effTheme } from "../lib/prefs";
 import { t, tf, num, fmtTime, setLang, loadLang, privacyHidden, setPrivacyHidden } from "../lib/i18n";
 import { api } from "../lib/api";
 import { Button, IconButton, Banner, Loading, Spinner } from "../components/ui/primitives";
-import { Dialog } from "../components/ui/overlays";
 import { TextField } from "../components/ui/forms";
 import { Welcome } from "./Welcome";
 import { passkeyBlocker, signInWithPasskey, isCancel } from "../lib/passkey";
@@ -107,7 +106,7 @@ function Shell() {
   const prefs = usePrefs();
   const [route, setRoute] = useState<RouteId>(routeOf);
   const [missing, setMissing] = useState(isMissing);
-  const [navOpen, setNavOpen] = useState(false), [help, setHelp] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   const main = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -119,7 +118,7 @@ function Shell() {
   const rail = prefs.rail;
   const dark = effTheme() === "dark";
   const sub = route === "people" && dash ? `${num(dash.users.filter((u) => !u.protected).length, 0)} ${t("sub.people")}` : t("sub." + route);
-  const sidebar = (mobile: boolean) => <Sidebar route={route} dash={dash} live={live} rail={!mobile && rail} mobile={mobile} onNavigate={() => setNavOpen(false)} onLogout={logout} onHelp={() => { setNavOpen(false); setHelp(true); }} />;
+  const sidebar = (mobile: boolean) => <Sidebar route={route} dash={dash} live={live} rail={!mobile && rail} mobile={mobile} onNavigate={() => setNavOpen(false)} onLogout={logout} />;
   return (
     <SlotCtx.Provider value={slot}>
       <a href="#main" className="qm-sr focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-[100] focus:rounded-md focus:bg-raised focus:px-3 focus:py-2">{t("a11y.skip")}</a>
@@ -163,7 +162,6 @@ function Shell() {
           </div>
         </main>
       </div>
-      <HelpDialog open={help} onOpenChange={setHelp} />
       <Welcome />
       {/* incoming transfers must pop up on every page, from sign-in on */}
       <Suspense fallback={null}><TransferOverlay /></Suspense>
@@ -190,21 +188,5 @@ function ConnectionBanner({ live, lastUpdated, connected }: { live: string; last
         {t(live === "offline" ? "conn.lost.d" : "conn.reconnecting.d")} {since}
       </Banner>
     </div>
-  );
-}
-
-const TERMS = ["wan", "lan", "quota", "period", "dhcp", "dns", "mac", "ip", "subnet", "vpn", "shaping", "guest", "rogue", "daily"];
-function HelpDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
-  const [q, setQ] = useState("");
-  const list = TERMS.filter((k) => (t("term." + k) + " " + t("term." + k + ".d")).toLowerCase().includes(q.trim().toLowerCase()));
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange} title={t("help.title")} sub={t("help.sub")} wide>
-      <TextField label={t("help.search")} value={q} onChange={setQ} type="search" />
-      <dl className="mt-4 divide-y divide-line">
-        {list.map((k) => <div key={k} className="py-3"><dt className="font-semibold text-fg">{t("term." + k)}</dt><dd className="mt-0.5 text-[13px] text-fg-2">{t("term." + k + ".d")}</dd></div>)}
-        {!list.length && <p className="py-6 text-center text-[13px] text-fg-3">{t("f.nomatch")} <button type="button" className="font-semibold text-accent-fg" onClick={() => setQ("")}>{t("f.clear")}</button></p>}
-      </dl>
-      <p className="mt-3 text-[12.5px] text-fg-3">{t("help.more")}</p>
-    </Dialog>
   );
 }

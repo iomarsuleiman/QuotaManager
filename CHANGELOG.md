@@ -9,12 +9,14 @@ match it. Release notes are composed from a version's section below.)_
 ## [Unreleased]
 
 Added:
+- Local testing can use separate data folders, allowing automated checks without signing the person testing the dashboard out.
 - Sign in with a passkey: Face ID, Touch ID, Windows Hello or your Android screen lock instead of typing the password. Add one per device from System > Account. The key stays on your device; the gateway keeps only a public key. Passkeys need the dashboard opened by name over HTTPS (for example the Tailscale address) — the Account page explains this when you open it by its number.
 - Clear pages for when something goes wrong: "page not found", "can't reach the gateway" (with checks and automatic retry), "a newer version was installed — reload", and a recoverable error screen if a page fails.
 - Every empty list now has a small illustration, a short explanation and the next step.
 
 Changed:
-- The sidebar gives navigation more room, has a compact footer and mobile close button, and shows drag handles only after choosing Reorder.
+- The monthly quota summary now stays visible while the sidebar scrolls, including a compact meter when collapsed. System and Help are regular navigation pages; Help has its own searchable glossary.
+- The sidebar has a mobile close button and shows drag handles only after choosing Reorder.
 - Input buttons now line up across the dashboard, including Share, security controls and passkeys. Arabic number fields keep values separate from their units.
 - Dashboard choice menus and scrollbars now follow the selected theme, with keyboard-friendly menus and matching device-address suggestions.
 - The redesigned dashboard now includes the option to open internet access when everyone runs out of quota, with a clear status while it is active.

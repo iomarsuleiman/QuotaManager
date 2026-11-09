@@ -4,6 +4,7 @@ export default {
   "nav.overview": "Overview", "nav.people": "People & devices", "nav.quota": "Quota", "nav.network": "Network",
   "nav.internet": "Internet", "nav.security": "Security", "nav.vpn": "VPN", "nav.insights": "Insights",
   "nav.share": "Share", "nav.system": "System",
+  "nav.help": "Help",
 
   "login.title": "Welcome back", "login.sub": "Sign in to manage your network",
   "login.password": "Password", "login.code": "Authenticator code", "login.submit": "Unlock",
@@ -79,6 +80,7 @@ export default {
   "sub.overview": "A live picture of your bundle and network",
   "sub.people": "people and devices on your network",
   "sub.system": "Appearance, account and updates",
+  "sub.help": "Plain explanations and everyday help",
   "sub.vpn": "Tunnel, servers and who goes through it",
   "ov.live": "Live traffic",
   "ov.livebadge": "Live",

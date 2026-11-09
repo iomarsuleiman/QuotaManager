@@ -1,7 +1,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
 // Stable route IDs (never translated labels) — URLs stay #/overview, #/people, …
-export type RouteId = "overview" | "people" | "quota" | "insights" | "internet" | "network" | "vpn" | "security" | "share" | "system";
+export type RouteId = "overview" | "people" | "quota" | "insights" | "internet" | "network" | "vpn" | "security" | "share" | "system" | "help";
 export interface RouteDef { id: RouteId; icon: string; group: GroupId; load: () => Promise<{ default: ComponentType }> }
 export type GroupId = "main" | "net" | "tools" | "settings";
 export const GROUPS: { id: GroupId; label: string }[] = [
@@ -19,6 +19,7 @@ export const ROUTES: RouteDef[] = [
   { id: "security", icon: "security", group: "net", load: () => import("../pages/Security") },
   { id: "share", icon: "share", group: "tools", load: () => import("../pages/Share") },
   { id: "system", icon: "system", group: "settings", load: () => import("../pages/System") },
+  { id: "help", icon: "help", group: "settings", load: () => import("../pages/Help") },
 ];
 export const PAGES = Object.fromEntries(ROUTES.map((r) => [r.id, lazy(r.load)])) as Record<RouteId, LazyExoticComponent<ComponentType>>;
 export const routeById = (id: string) => ROUTES.find((r) => r.id === id);

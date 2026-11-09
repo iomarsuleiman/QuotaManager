@@ -15,9 +15,9 @@ let dndMod: DndMod | null = null;
 let dndLoading: Promise<DndMod> | null = null;
 const loadDnd = () => (dndLoading ||= import("./SortableNav").then((m) => (dndMod = m)).catch((error) => { dndLoading = null; throw error; }));
 
-interface Props { route: RouteId; dash?: Dashboard; live: LiveState; onNavigate?: () => void; rail?: boolean; onLogout: () => void; onHelp: () => void; mobile?: boolean }
+interface Props { route: RouteId; dash?: Dashboard; live: LiveState; onNavigate?: () => void; rail?: boolean; onLogout: () => void; mobile?: boolean }
 
-export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, onHelp, mobile }: Props) {
+export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, mobile }: Props) {
   const prefs = usePrefs();
   const navId = useId();
   const toast = useToast();
@@ -76,7 +76,7 @@ export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, onHelp,
 
       <div ref={scroll} className="qm-sidebar-scroll min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-0.5">
         <nav className="flex flex-col gap-3" aria-label={t("nav.aria")}>
-          {GROUPS.filter((g) => g.id !== "settings").map((g) => (
+          {GROUPS.map((g) => (
             <div key={g.id} role="group" aria-labelledby={rail ? undefined : `${navId}-${g.id}`} aria-label={rail ? t(g.label) : undefined} className={clsx(rail && "w-full border-t border-line pt-3 first:border-0 first:pt-0")}>
               {!rail && <div id={`${navId}-${g.id}`} className="px-2.5 pb-1 text-[11px] font-semibold uppercase tracking-[.08em] text-fg-3 rtl:text-[12px] rtl:normal-case rtl:tracking-normal">{t(g.label)}</div>}
               <ul className="flex flex-col gap-0.5">
@@ -95,20 +95,18 @@ export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, onHelp,
           ))}
         </nav>
 
-        {b && !rail && (
-          <a href="#/quota" onClick={onNavigate} className="qm-sidebar-bundle mt-4 block rounded-md border border-line bg-surface px-2.5 py-2 hover:border-line-strong">
-            <div className="flex items-baseline justify-between text-[12px] text-fg-2"><span>{t("side.bundle")}</span><b className="text-[13px] text-fg tabular-nums">{num(pct, 0)}%</b></div>
-            <Meter value={pct} className="my-1.5" label={t("side.bundle")} />
-            <div className="text-[12px] text-fg-3">{num(Math.max(0, b.remaining_gb))} {t("common.gb")} {t("side.left")}{b.days_left >= 0 ? ` · ${tf("side.resets", { n: num(b.days_left, 0) })}` : ""}</div>
-          </a>
-        )}
-
       </div>
 
-      <div className={clsx("flex shrink-0 gap-1 border-t border-line pt-2", rail ? "w-full flex-col items-center" : "items-center")}>
-        <ul className={clsx("min-w-0 flex-1", rail && "flex w-full justify-center")}><NavItem id="system" active={route === "system"} rail={!!rail} onNavigate={onNavigate} sortable={false} /></ul>
-        <FootButton icon="help" label={t("help.title")} rail={!!rail} onClick={onHelp} />
-      </div>
+      {b && (
+        <a href="#/quota" onClick={onNavigate} aria-label={rail ? `${t("side.bundle")}: ${num(pct, 0)}%` : undefined}
+          className={clsx("qm-sidebar-bundle block w-full shrink-0 rounded-md border border-line bg-surface hover:border-line-strong", rail ? "px-1 py-2 text-center" : "px-2.5 py-2")}>
+          {rail ? <b className="text-[11px] text-fg tabular-nums">{num(pct, 0)}%</b> :
+            <div className="flex items-baseline justify-between text-[12px] text-fg-2"><span>{t("side.bundle")}</span><b className="text-[13px] text-fg tabular-nums">{num(pct, 0)}%</b></div>}
+          <Meter value={pct} className="my-1.5" label={t("side.bundle")} />
+          {!rail && <div className="text-[12px] text-fg-3">{num(Math.max(0, b.remaining_gb))} {t("common.gb")} {t("side.left")}{b.days_left >= 0 ? ` \u00b7 ${tf("side.resets", { n: num(b.days_left, 0) })}` : ""}</div>}
+        </a>
+      )}
+
       <div className={clsx("flex shrink-0 items-center gap-2 border-t border-line px-1.5 pt-2", rail && "flex-col")}>
         <span className="grid size-7 place-items-center rounded-full border border-line bg-surface text-[12px] font-semibold text-fg-2" aria-hidden>A</span>
         {!rail && <div className="min-w-0 flex-1 leading-tight"><b className="block text-[13px] text-fg">{t("nav.admin")}</b>
@@ -117,16 +115,6 @@ export function Sidebar({ route, dash, live, onNavigate, rail, onLogout, onHelp,
       </div>
     </aside>
   );
-}
-
-function FootButton({ icon, label, rail, onClick }: { icon: string; label: string; rail: boolean; onClick: () => void }) {
-  const b = (
-    <button type="button" onClick={onClick} aria-label={rail ? label : undefined}
-      className={clsx("flex h-9 shrink-0 items-center gap-2 rounded-md text-[13px] font-medium text-fg-2 hover:bg-raised hover:text-fg max-md:h-11", rail ? "w-11 justify-center" : "flex-1 px-2.5")}>
-      <Icon name={icon} size={17} />{!rail && label}
-    </button>
-  );
-  return rail ? <Tip label={label} side={getLang() === "ar" ? "left" : "right"}>{b}</Tip> : b;
 }
 
 function NavItem({ id, active, rail, count, onNavigate, sortable, sp }: {
