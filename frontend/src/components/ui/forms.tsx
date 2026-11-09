@@ -8,28 +8,30 @@ import { Icon } from "./Icon";
 import { t, num, getLang } from "../../lib/i18n";
 
 /* ------------------------------------------------------------------ field shell */
-export interface FieldProps { label: ReactNode; hint?: ReactNode; error?: string | null; children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode; className?: string; optional?: boolean }
-/** Label always visible, helper text under it, and a field-level error that never erases the value. */
-export function Field({ label, hint, error, children, className, optional }: FieldProps) {
+export interface FieldProps { label: ReactNode; hint?: ReactNode; error?: string | null; children: (ids: { id: string; describedBy?: string; invalid: boolean }) => ReactNode; className?: string; optional?: boolean; labelHidden?: boolean; action?: ReactNode }
+/** Labels stay accessible; inline actions align with the control, above helper/error text. */
+export function Field({ label, hint, error, children, className, optional, labelHidden, action }: FieldProps) {
   const id = useId(), hintId = id + "-h", errId = id + "-e";
   const describedBy = [hint ? hintId : "", error ? errId : ""].filter(Boolean).join(" ") || undefined;
   return (
-    <div className={clsx("flex min-w-0 flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-[12.5px] font-medium text-fg-2">{label}{optional && <span className="ms-1 font-normal text-fg-3">({t("f.optional")})</span>}</label>
-      {children({ id, describedBy, invalid: !!error })}
+    <div className={clsx("qm-field flex min-w-0 flex-col gap-1.5", className)}>
+      <label htmlFor={id} className={labelHidden ? "qm-sr" : "text-[12.5px] font-medium text-fg-2"}>{label}{optional && <span className="ms-1 font-normal text-fg-3">({t("f.optional")})</span>}</label>
+      {action ? <div className="qm-field-action flex items-start gap-2 [&>button]:shrink-0"><div className="min-w-0 flex-1">{children({ id, describedBy, invalid: !!error })}</div>{action}</div>
+        : children({ id, describedBy, invalid: !!error })}
       {error ? <p id={errId} role="alert" className="flex items-start gap-1 text-[12px] text-danger"><Icon name="alert" size={13} className="mt-0.5" />{error}</p>
         : hint ? <p id={hintId} className="text-[12px] leading-snug text-fg-3">{hint}</p> : null}
     </div>
   );
 }
-const ctl = "h-9 max-md:h-11 w-full min-w-0 rounded-md border bg-canvas px-3 text-[13.5px] text-fg placeholder:text-fg-3 transition-colors outline-none " +
+const controlBase = "h-9 max-md:h-11 w-full min-w-0 rounded-md border bg-canvas text-[13.5px] text-fg placeholder:text-fg-3 transition-colors outline-none " +
   "border-line-strong hover:border-fg-3 focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-focus/40 " +
   "disabled:opacity-60 disabled:bg-raised read-only:bg-raised aria-[invalid=true]:border-danger";
+const ctl = controlBase + " px-3";
 export const controlClass = ctl;
 
-export function TextField({ label, hint, error, value, onChange, mono, className, optional, ...rest }: { label: ReactNode; hint?: ReactNode; error?: string | null; value: string; onChange: (v: string) => void; mono?: boolean; optional?: boolean } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+export function TextField({ label, hint, error, value, onChange, mono, className, optional, labelHidden, action, ...rest }: { label: ReactNode; hint?: ReactNode; error?: string | null; value: string; onChange: (v: string) => void; mono?: boolean; optional?: boolean; labelHidden?: boolean; action?: ReactNode } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return (
-    <Field label={label} hint={hint} error={error} className={className} optional={optional}>
+    <Field label={label} hint={hint} error={error} className={className} optional={optional} labelHidden={labelHidden} action={action}>
       {({ id, describedBy, invalid }) => (
         <input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={value} onChange={(e) => onChange(e.target.value)}
           className={clsx(ctl, mono && "qm-ltr font-mono text-[13px]")} dir={mono ? "ltr" : undefined} spellCheck={mono ? false : undefined}
@@ -61,9 +63,9 @@ const fmtDraft = (v: number | null | undefined) => (v == null || Number.isNaN(v)
  * an empty box into 0), validates on blur/submit, ignores the mouse wheel, and has
  * optional −/+ steppers. `onValue` only receives valid numbers (or null when empty+allowed).
  */
-export function NumberField({ label, hint, error: extErr, value, onValue, unit, spec = {}, stepper, presets, className, placeholder, ariaLabel, disabled, onValidity }: {
+export function NumberField({ label, hint, error: extErr, value, onValue, unit, spec = {}, stepper, presets, className, placeholder, ariaLabel, disabled, onValidity, labelHidden }: {
   label: ReactNode; hint?: ReactNode; error?: string | null; value: number | null; onValue: (v: number | null) => void; unit?: string; spec?: NumberSpec;
-  stepper?: boolean; presets?: number[]; className?: string; placeholder?: string; ariaLabel?: string; disabled?: boolean; onValidity?: (ok: boolean) => void;
+  stepper?: boolean; presets?: number[]; className?: string; placeholder?: string; ariaLabel?: string; disabled?: boolean; onValidity?: (ok: boolean) => void; labelHidden?: boolean;
 }) {
   const [draft, setDraft] = useState(fmtDraft(value));
   const [err, setErr] = useState<string | null>(null);
@@ -83,20 +85,20 @@ export function NumberField({ label, hint, error: extErr, value, onValue, unit, 
   };
   const error = extErr ?? err;
   return (
-    <Field label={label} hint={hint} error={error} className={className}>
+    <Field label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
       {({ id, describedBy, invalid }) => (
         <div className="flex flex-col gap-2">
           <div className="flex items-stretch gap-1.5">
             {stepper && <StepBtn icon="minus" label={t("f.decrease")} onClick={() => stepBy(-1)} disabled={disabled || (spec.min != null && (parseNumber(draft, {}).value ?? 0) <= spec.min)} />}
-            <div className="relative min-w-0 flex-1">
+            <div aria-invalid={invalid} className={clsx(controlBase, "flex min-w-0 flex-1 items-center focus-within:border-focus focus-within:outline-2 focus-within:outline-offset-0 focus-within:outline-focus/40", disabled && "bg-raised opacity-60")}>
               <input id={id} aria-describedby={describedBy} aria-invalid={invalid} aria-label={ariaLabel} disabled={disabled}
                 type="text" inputMode={spec.integer ? "numeric" : "decimal"} autoComplete="off" dir="ltr" placeholder={placeholder}
-                className={clsx(ctl, "text-start tabular-nums", unit && "pe-14", getLang() === "ar" && "text-end")} value={draft}
+                className={clsx("h-full w-full min-w-0 rounded-md bg-transparent px-3 tabular-nums outline-none placeholder:text-fg-3 disabled:cursor-not-allowed", getLang() === "ar" ? "text-right" : "text-left")} value={draft}
                 onFocus={() => { focused.current = true; }}
                 onChange={(e) => { setDraft(e.target.value); if (err) setErr(null); commit(e.target.value, false); }}
                 onBlur={() => { focused.current = false; commit(draft, true); }}
                 onKeyDown={(e) => { if (e.key === "ArrowUp") { e.preventDefault(); stepBy(1); } else if (e.key === "ArrowDown") { e.preventDefault(); stepBy(-1); } }} />
-              {unit && <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-[12.5px] font-medium text-fg-3" aria-hidden>{unit}</span>}
+              {unit && <span className="max-w-[55%] shrink-0 truncate px-3 text-[12.5px] font-medium text-fg-3" dir="auto" aria-hidden>{unit}</span>}
             </div>
             {stepper && <StepBtn icon="plus" label={t("f.increase")} onClick={() => stepBy(1)} disabled={disabled || (spec.max != null && (parseNumber(draft, {}).value ?? 0) >= spec.max)} />}
           </div>
@@ -157,9 +159,9 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
   );
 }
 /** Themed fixed choices with keyboard navigation, typeahead and focus restoration. */
-export function Select<T extends string>({ label, hint, error, value, onChange, options, className, disabled }: { label: ReactNode; hint?: ReactNode; error?: string | null; value: T; onChange: (v: T) => void; options: { value: T; label: string; disabled?: boolean }[]; className?: string; disabled?: boolean }) {
+export function Select<T extends string>({ label, hint, error, value, onChange, options, className, disabled, labelHidden }: { label: ReactNode; hint?: ReactNode; error?: string | null; value: T; onChange: (v: T) => void; options: { value: T; label: string; disabled?: boolean }[]; className?: string; disabled?: boolean; labelHidden?: boolean }) {
   return (
-    <Field label={label} hint={hint} error={error} className={className}>
+    <Field label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
       {({ id, describedBy, invalid }) => (
         <Menu.Root dir={getLang() === "ar" ? "rtl" : "ltr"}>
           <Menu.Trigger asChild>

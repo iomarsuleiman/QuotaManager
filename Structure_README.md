@@ -2417,3 +2417,29 @@ buttons instead of browser datalists. Scrollbars use theme tokens, rounded
 thumbs and no arrow buttons; Firefox uses thin colored scrollbars. React
 interaction tests cover selection and Escape, and `test_new_ui.py` rejects
 native select/datalist elements anywhere in dashboard source.
+
+
+### Sidebar and field alignment follow-up
+
+`Sidebar` uses one flexing scroll region for navigation and the quota summary,
+with non-shrinking header/footer controls. System and Help share a footer row.
+Route/mode changes reveal the active item inside that region without scrolling
+the document. Reordering is an explicit local mode; its lazy DnD module is
+loaded on request, with retry feedback on failure. Handles occupy their own
+in-row slot. Collapsed links retain accessible names, tooltips follow text
+direction, and each rendered sidebar has unique group-heading IDs. The mobile
+drawer includes its own close action.
+
+`Field.labelHidden` applies the screen-reader-only style to the label itself,
+so it leaves no flex gap above the input. `Field.action` and the corresponding
+`TextField` prop put an inline action on the control row, before helper/error
+text. Share submission, firewall bans and passkey registration use this slot.
+All previous screen-reader-only span labels in field components were migrated.
+`NumberField` puts its input and unit in separate flex items instead of an
+absolute overlay, so RTL text and longer unit translations cannot cover values.
+The number remains LTR internally, with its text alignment matching the UI.
+
+Follow-up verification includes 24 frontend tests, 50 Python UI/token tests,
+and 60 automated Chromium layouts across all dashboard routes, English/Arabic,
+light/dark themes and desktop/mobile sizes. The full inventory is in
+`docs/fork-sync-2026-11-09.md`.

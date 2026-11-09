@@ -26,7 +26,7 @@ export function SliderField({ label, hint, value, onValue, min, max, step = 1, u
                 className="block size-5 rounded-full border-2 border-accent bg-canvas shadow-raised outline-none focus-visible:ring-4 focus-visible:ring-focus/40 max-md:size-7" />
             </SliderP.Root>
             <div className="w-28 shrink-0">
-              <NumberField label={<span className="qm-sr">{label}</span>} value={value} onValue={(v) => v != null && onValue(v)} unit={unit} spec={{ min, max, step }} ariaLabel={typeof label === "string" ? label : undefined} disabled={disabled} />
+              <NumberField label={label} labelHidden value={value} onValue={(v) => v != null && onValue(v)} unit={unit} spec={{ min, max, step }} ariaLabel={typeof label === "string" ? label : undefined} disabled={disabled} />
             </div>
           </div>
           {marks && <div className="flex justify-between px-1 text-[11px] text-fg-3" dir="ltr" aria-hidden>{marks.map((m) => <span key={m}>{text(m)}</span>)}</div>}

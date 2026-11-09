@@ -76,9 +76,9 @@ export function DailySection({ u, dash, onDirty }: { u: User; dash: Dashboard; o
                 ))}
                 {!Object.keys(heavy).length && <span className="text-[12px] text-fg-3">{t("dq.heavy.none")}</span>}
               </div>
-              <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-2">
                 <input id={id} type="date" min={today} value={day} onChange={(e) => setDay(e.target.value)} aria-label={t("dq.heavy.date")} className={clsx(controlClass)} />
-                <NumberField label={<span className="qm-sr">{t("dq.heavy.gb")}</span>} ariaLabel={t("dq.heavy.gb")} value={dayGb} onValue={setDayGb} unit={t("common.gb")} spec={{ min: 0.01, max: 100000, decimals: 2, allowEmpty: true }} />
+                <NumberField label={t("dq.heavy.gb")} labelHidden ariaLabel={t("dq.heavy.gb")} value={dayGb} onValue={setDayGb} unit={t("common.gb")} spec={{ min: 0.01, max: 100000, decimals: 2, allowEmpty: true }} />
                 <Button onClick={addHeavy} disabled={!day || !(dayGb && dayGb > 0)}>{t("dq.heavy.add")}</Button>
               </div>
             </div>

@@ -82,7 +82,7 @@ export default function People() {
         </label>
         <Segmented label={t("pp.filter")} value={filter} onChange={(v) => setPref("peopleFilter", v)}
           options={(["all", "online", "blocked", "guest"] as Filter[]).map((f) => ({ value: f, label: t("pp.f." + f), count: all.filter(is[f]).length }))} />
-        <div className="w-44"><Select label={<span className="qm-sr">{t("pp.sort")}</span>} value={sort} onChange={(v) => setPref("peopleSort", v)}
+        <div className="w-44"><Select label={t("pp.sort")} labelHidden value={sort} onChange={(v) => setPref("peopleSort", v)}
           options={(["default", "usage", "percent", "name"] as Sort[]).map((s) => ({ value: s, label: t("pp.sort." + s) }))} /></div>
         {filtersOn && <Button size="sm" variant="ghost" icon="reset" onClick={clear}>{t("f.clearall")}</Button>}
       </div>

@@ -163,8 +163,7 @@ function Firewall() {
       <Card className="col-span-12 lg:col-span-6" title={t("fw.bans")} sub={t("fw.bans.d")}>
         <form className="flex items-start gap-2" onSubmit={(e) => { e.preventDefault(); if (!isIPv4(banIp)) { setBanErr(t("n.ip.bad")); return; }
           run("ban", async () => { await api.post("/api/firewall/ban", { ip: banIp.trim(), seconds: 1800, reason: "manual" }); setBanIp(""); await reload(); }, tf("fw.banned.n", { ip: banIp.trim() })); }}>
-          <TextField className="flex-1" label={<span className="qm-sr">{t("fw.ban")}</span>} hint={!banErr ? t("fw.ban.h") : undefined} value={banIp} onChange={(v) => { setBanIp(v); setBanErr(null); }} placeholder="203.0.113.9" mono error={banErr} />
-          <Button type="submit" variant="danger" icon="ban" pending={pending === "ban"}>{t("fw.ban")}</Button>
+          <TextField className="flex-1" label={t("fw.ban")} labelHidden hint={!banErr ? t("fw.ban.h") : undefined} value={banIp} onChange={(v) => { setBanIp(v); setBanErr(null); }} placeholder="203.0.113.9" mono error={banErr} action={<Button type="submit" variant="danger" icon="ban" pending={pending === "ban"}>{t("fw.ban")}</Button>} />
         </form>
         {(s.bans || []).length ? <ul className="mt-2 divide-y divide-line">{(s.bans || []).map((b) => (
           <li key={b.ip} className="flex items-center gap-3 py-2"><Icon name="ban" size={15} className="text-danger" /><span className="min-w-0 flex-1"><b className="qm-ltr font-mono text-[13px] text-fg">{iso(b.ip)}</b><span className="block text-[12px] text-fg-3">{b.reason || ""}</span></span>

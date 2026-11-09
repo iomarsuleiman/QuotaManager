@@ -74,10 +74,8 @@ function Passkeys() {
   return (
     <Card className="col-span-12" title={t("pk.title")} sub={t("pk.sub")} actions={<Badge tone={list.length ? "success" : "neutral"}>{list.length ? tf("pk.count", { n: num(list.length, 0) }) : t("pk.none.badge")}</Badge>}>
       {why ? <Banner tone="info" title={t("pk.why." + why + ".t")}>{t("pk.why." + why)}</Banner> : (
-        <div className="flex flex-wrap items-end gap-2">
-          <TextField className="min-w-52 flex-1" label={t("pk.name")} hint={t("pk.name.h")} value={name} onChange={setName} maxLength={60} />
-          <Button variant="primary" icon="plus" onClick={add} pending={adding} pendingText={t("pk.adding")}>{t("pk.add")}</Button>
-        </div>
+        <TextField label={t("pk.name")} hint={t("pk.name.h")} value={name} onChange={setName} maxLength={60}
+          action={<Button variant="primary" icon="plus" onClick={add} pending={adding} pendingText={t("pk.adding")}>{t("pk.add")}</Button>} />
       )}
       {!q.data ? <Loading what={t("pk.loading")} h={60} /> : !list.length ? (
         <Empty icon="vpn" title={t("pk.none")} sub={t("pk.none.sub")} />

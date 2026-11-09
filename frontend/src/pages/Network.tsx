@@ -155,7 +155,7 @@ function MacList({ kind, list }: { kind: "allow" | "deny"; list: string[] }) {
     <Card className="col-span-12 lg:col-span-6" title={t("n." + kind)} sub={t("n." + kind + ".d")} actions={<Badge icon={false}>{num(list.length, 0)}</Badge>}>
       <form className="flex items-start gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
         <div className="relative min-w-0 flex-1" onFocus={() => setSuggest(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSuggest(false); }}>
-          <TextField label={<span className="qm-sr">{t("n.mac.add")}</span>} hint={!err ? t("add.mac.hint") : undefined} value={v} onChange={(x) => { setV(x); setErr(null); }} placeholder="aa:bb:cc:dd:ee:ff" mono error={err} autoComplete="off" />
+          <TextField label={t("n.mac.add")} labelHidden hint={!err ? t("add.mac.hint") : undefined} value={v} onChange={(x) => { setV(x); setErr(null); }} placeholder="aa:bb:cc:dd:ee:ff" mono error={err} autoComplete="off" />
           {suggest && [...known].some(([m, n]) => !list.includes(m) && `${m} ${n}`.toLowerCase().includes(v.toLowerCase())) && (
             <div className="absolute start-0 top-12 z-20 max-h-48 w-full overflow-y-auto rounded-md border border-line bg-raised p-1 shadow-raised" aria-label={t("f.choose")}>
               {[...known].filter(([m, n]) => !list.includes(m) && `${m} ${n}`.toLowerCase().includes(v.toLowerCase())).map(([m, n]) => (

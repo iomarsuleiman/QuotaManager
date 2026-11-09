@@ -14,6 +14,8 @@ Added:
 - Every empty list now has a small illustration, a short explanation and the next step.
 
 Changed:
+- The sidebar gives navigation more room, has a compact footer and mobile close button, and shows drag handles only after choosing Reorder.
+- Input buttons now line up across the dashboard, including Share, security controls and passkeys. Arabic number fields keep values separate from their units.
 - Dashboard choice menus and scrollbars now follow the selected theme, with keyboard-friendly menus and matching device-address suggestions.
 - The redesigned dashboard now includes the option to open internet access when everyone runs out of quota, with a clear status while it is active.
 - A redesigned dashboard: calm neutral colours in light and dark, one quiet accent, and colour used only where it means something (online, warning, blocked). The moving background and glows are gone, so the panel is lighter on the gateway laptop.

@@ -160,8 +160,7 @@ function TextsCard({ texts, onChange, pending }: { texts: SText[]; onChange: () 
   return (
     <Card className="col-span-12 lg:col-span-5" title={t("sh.text")} sub={t("sh.text.d")}>
       <form className="flex items-start gap-2" onSubmit={async (e) => { e.preventDefault(); const s = v.trim(); if (!s) return; if (await run("text", async () => { await api.post("/api/share/text", { text: s }); onChange(); }, t("sh.text.done"))) setV(""); }}>
-        <TextField className="flex-1" label={<span className="qm-sr">{t("sh.text")}</span>} value={v} onChange={setV} placeholder={t("sh.text.ph")} autoComplete="off" />
-        <Button type="submit" variant="primary" disabled={!v.trim()} pending={pending === "text"}>{t("sh.text.go")}</Button>
+        <TextField className="flex-1" label={t("sh.text")} labelHidden value={v} onChange={setV} placeholder={t("sh.text.ph")} autoComplete="off" action={<Button type="submit" variant="primary" disabled={!v.trim()} pending={pending === "text"}>{t("sh.text.go")}</Button>} />
       </form>
       {!texts.length ? <p className="mt-3 text-[12.5px] text-fg-3">{t("sh.text.none")}</p> : (
         <ul className="mt-3 max-h-80 divide-y divide-line overflow-y-auto">{texts.map((x) => (
