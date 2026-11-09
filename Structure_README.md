@@ -1953,8 +1953,16 @@ QuotaManager/
 │   └── release.yml           # builds the .deb on a version tag -> GitHub Releases
 ├── packaging/DEBIAN/
 │   ├── control.template      # Debian control file (Version rendered from quota/version.py)
-│   ├── postinst              # venv + setup script + start the gateway service
+│   ├── postinst              # thin wrapper -> scripts/post_install.sh deb
 │   └── prerm                 # stop + disable the gateway service on remove/upgrade
+├── packaging/generic/install.sh   # tarball installer for any systemd distro (--no-deps, --uninstall)
+├── packaging/rpm/quota-manager.spec.template   # Fedora/RHEL (noarch; %preun acts only on erase)
+├── packaging/arch/{PKGBUILD,quota-manager.install}   # Arch (CI builds the .pkg.tar.zst with tar --zstd)
+├── packaging/build_packages.sh   # builds deb+tarball+rpm+arch into dist/ (release.yml AND packaging-smoke.yml use it)
+├── packaging/ci/smoke.sh     # installs/upgrades/removes a package inside a distro container
+├── scripts/install_openwrt.sh # OpenWrt installer (apk on 25.12+, opkg before; experimental)
+├── scripts/post_install.sh   # shared post-install for deb/rpm/arch/tarball; writes .install-kind
+├── scripts/distro.sh         # package-manager detection + per-distro package names
 ├── config.yaml               # Linux gateway settings (dnsmasq + nftables)
 ├── run.py                    # gateway wiring: fast core boot (startup_core) + concurrent subsystems + uvicorn
 ├── requirements-linux.txt    # Linux deps (fastapi, uvicorn, aiosqlite, PyYAML + test deps)
@@ -2336,3 +2344,76 @@ Each item below was a real outage on a live gateway; the regression test is name
 - **Revert semantics**: `safe_apply` captures the config that was running *before* persisting the new one (falling back to `firewall_last_good`, then the sanitized new config when it is the very first apply since boot), and `revert_last_good` re-applies it **and persists it**, so a restart never resurrects the reverted rules. A second apply followed by Revert goes back exactly one step, not to the first apply since boot. [`tests/test_firewall.py`]
 - LAN mode: `fw_forward` accepts the local subnets before custom rules, so custom *deny* rules whose source is a local subnet cannot match (the UI says so on the rules card); `sanitize` also refuses client-subnet-wide denies and bans of protected IPs.
 - `reconcile` (every tick) re-applies when `nft list table inet quota_firewall` fails (external `flush ruleset`), and clears a sticky `available=False` after 60 s (not when nft is missing).
+
+## Open when everyone is out of quota (on by default)
+
+`QuotaService.refresh_free_mode()` (run on every block tick, snapshot and dashboard
+build) derives **free mode**: every metered person (not the Gateway, not exempt,
+not "disabled", not admin-cut, owning a device) is over their allowance **and** no
+add-on pack has GB left. While it is on, quota and daily-plan cuts are lifted
+(`user_quota_blocked` returns False; admin cuts and deny-lists stay). It is never
+latched: the moment anyone gets more GB (pack, top-up, bundle) the condition is
+false and the box enforces quotas again.
+
+Usage made while it is on is also written to `free_usage` (the `Database.free_mode`
+flag) and subtracted in `get_period_usage*`, `get_usage_before_and_on` and
+`get_user_usage_on`, so the GB added later is never eaten by it. Reports still show
+the real usage. Switch: setting `free_when_exhausted` (`/api/free-mode`, Quota page);
+the transition is logged as an event.
+
+
+## Fork synchronization and local testing (2026-11-09)
+
+The fork merges upstream `UserJoo9/QuotaManager` through `ed31b08`, including
+`73be78c` (0.5.4 features), `f397755` (RPM packaging fix) and `ed31b08`
+(release notes). The fork retains the React dashboard from `699e0ba`,
+`b8ae2d6` and `8dbead7`. Conflicts in the dashboard entry point and UI tests
+were resolved in favor of React; the legacy daily-plan, person-drawer and
+quota-page JavaScript modules remain deleted. Both changelog sections remain.
+
+The Quota page reads `free_mode` and `free_mode_enabled` from
+`GET /api/dashboard` and writes `POST /api/free-mode` through the existing
+mutation/refresh flow. Both dictionaries contain its labels. The disabled
+spread plan shows the reset-day requirement beside its option. Vite output
+and precompressed assets are regenerated; HTML input/output use LF endings
+so Windows builds match Linux CI. Backend release version is upstream 0.5.4;
+frontend package version stays 0.6.0 for the fork's redesign. No release tag
+is created or rewritten.
+
+For a local dashboard and API without network enforcement:
+
+```powershell
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements-linux.txt tzdata
+.venv/Scripts/python scripts/run_local.py --port 8080
+```
+
+Open `http://127.0.0.1:8080` and use password `admin` on first start.
+The runner binds only loopback and stores SQLite and shared files below
+`data/local-test/`. It uses the real API and database, but does not start
+`Gateway`, DHCP, nftables, shaping or VPN networking. Stop with Ctrl+C.
+Use `.venv/bin/python` on Linux. Data persists between runs. This verifies
+dashboard/API behavior, not packet forwarding or physical gateway performance.
+
+Verification commands:
+
+```text
+python -m pyflakes api core quota tests run.py scripts/run_local.py
+python -m pytest tests -q --timeout=60
+cd frontend
+npm ci
+npm test
+npm run build
+```
+
+Linux checks use Python 3.12 with bash, nftables, iproute2, dnsmasq and
+arp-scan installed, matching the backend CI environment. The full change
+inventory and validation results are recorded in `docs/fork-sync-2026-11-09.md`.
+
+The dashboard's shared `Select` uses Radix DropdownMenu radio items, with
+keyboard navigation, typeahead, disabled options, selected indicators, RTL
+placement and trigger focus restoration. MAC-list suggestions use themed
+buttons instead of browser datalists. Scrollbars use theme tokens, rounded
+thumbs and no arrow buttons; Firefox uses thin colored scrollbars. React
+interaction tests cover selection and Escape, and `test_new_ui.py` rejects
+native select/datalist elements anywhere in dashboard source.

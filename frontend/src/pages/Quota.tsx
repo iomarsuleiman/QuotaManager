@@ -59,6 +59,11 @@ export default function Quota() {
         <Card title={t("q.newperiod")} sub={t("q.newperiod.d")}>
           <Button variant="danger" icon="reset" onClick={() => setReset(true)}>{t("q.newperiod.btn")}</Button>
         </Card>
+        <Card title={t("fm.title")} sub={t("fm.d")}>
+          {d.free_mode && <p role="status" className="mb-3 text-[13px] text-warning">{t("fm.active")}. {t("fm.active.d")}</p>}
+          <SwitchRow title={t("fm.sw")} desc={t("fm.sw.d")} checked={d.free_mode_enabled !== false} pending={pending === "free"}
+            onChange={(v) => run("free", () => api.post("/api/free-mode", { enabled: v }))} />
+        </Card>
         <Card title={<Term k="daily">{t("dq.master")}</Term>} sub={t("dq.master.d")}>
           <SwitchRow title={t("dq.master.sw")} desc={t("dq.master.sw.d")} checked={!!d.daily_enabled} pending={pending === "daily"}
             onChange={(v) => run("daily", () => api.post("/api/daily", { enabled: v }), v ? t("dq.master.on") : t("dq.master.off"))} />

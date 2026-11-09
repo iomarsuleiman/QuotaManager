@@ -23,6 +23,16 @@ UI = ROOT / "web"
 SRC = ROOT / "frontend" / "src"
 
 
+def test_dashboard_uses_themed_choices_and_scrollbars():
+    for path in SRC.rglob("*.tsx"):
+        if path.name.endswith(".test.tsx"):
+            continue
+        assert not re.search(r"<(?:select|datalist)\b", path.read_text(encoding="utf-8")), path
+    css = (SRC / "styles/app.css").read_text(encoding="utf-8")
+    assert "::-webkit-scrollbar-thumb" in css
+    assert "::-webkit-scrollbar-button" in css and "scrollbar-color:" in css
+
+
 def _css():
     return list((UI / "css").rglob("*.css"))
 
@@ -272,3 +282,17 @@ def test_read_only_dialogs_have_one_close_button():
     js = (SRC / "pages/SystemTabs.tsx").read_text(encoding="utf-8")
     notes = js[js.index("<Dialog open={notes}"):js.index("</Dialog>", js.index("<Dialog open={notes}"))]
     assert 't("common.close")' in notes and 't("common.cancel")' not in notes
+
+
+def test_public_pages_have_a_language_switch():
+    """/share and /milestone share one tiny AR/EN switch; every Arabic key used
+    in the code has a matching dictionary entry."""
+    import re
+    web = ROOT / "web" if "ROOT" in globals() else __import__("pathlib").Path(__file__).resolve().parent.parent / "web"
+    for page, dic in (("share.html", "i18n-share.js"), ("milestone.html", "i18n-milestone.js")):
+        html = (web / page).read_text(encoding="utf-8")
+        assert "/assets/pub-i18n.js" in html and f"/assets/{dic}" in html and "QMI.mount(" in html
+        d = (web / "assets" / dic).read_text(encoding="utf-8")
+        for key in re.findall(r"QMI\.t\((['\"])((?:\\.|(?!\1).)*)\1", html):
+            k = key[1].replace('\\"', '"').replace("\\'", "'")
+            assert f'"{k}"'.replace('"', '"') in d or k in d.replace('\\"', '"'), f"{page}: missing Arabic for {k!r}"

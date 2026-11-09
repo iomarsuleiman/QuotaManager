@@ -55,6 +55,8 @@ def client(tmp_path):
 
     async def _init():
         await database.connect()
+        # plain quota blocking is under test here; free mode has its own tests
+        await database.set_setting("free_when_exhausted", "0")
         return database, service
 
 #     import asyncio
@@ -80,6 +82,21 @@ def test_wrong_password(client):
     c, _, _ = client
     r = c.post("/api/login", json={"password": "nope"})
     assert r.status_code == 401
+
+
+def test_free_mode_requires_login_and_dashboard_tracks_toggle(client):
+    c, _, _ = client
+    assert c.get("/api/free-mode").status_code == 401
+    assert c.post("/api/free-mode", json={"enabled": True}).status_code == 401
+    _login(c)
+    for enabled in (True, False):
+        response = c.post("/api/free-mode", json={"enabled": enabled})
+        assert response.status_code == 200
+        assert response.json() == {"enabled": enabled, "active": False}
+        assert c.get("/api/free-mode").json() == response.json()
+        dashboard = c.get("/api/dashboard").json()
+        assert dashboard["free_mode_enabled"] is enabled
+        assert dashboard["free_mode"] is False
 
 
 def test_login_rate_limit(client):
@@ -2436,7 +2453,7 @@ def test_updates_round_trip(tmp_path):
 
     installed = []
     up = Updater(
-        database, current_version="0.2.0",
+        database, current_version="0.2.0", install_kind="deb",
         fetch_json=lambda url, timeout=20: RELEASE,
         fetch_text=lambda url, timeout=20: CHANGELOG,
         download=lambda url, dest, timeout=120: None,

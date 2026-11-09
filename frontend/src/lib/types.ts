@@ -24,7 +24,7 @@ export interface Bundle {
 }
 export interface Rogue { mac?: string; ip?: string; vendor?: string; online?: boolean }
 export interface Dashboard {
-  bundle: Bundle; daily_enabled: boolean; users: User[]; devices?: Device[]; rogue: Rogue[];
+  bundle: Bundle; daily_enabled: boolean; free_mode: boolean; free_mode_enabled: boolean; users: User[]; devices?: Device[]; rogue: Rogue[];
   gateway?: { blocked_desired?: boolean; blocked_programmed?: boolean };
   vpn_share?: { enabled?: boolean; interface?: string; status?: { state?: string; interface?: string } };
   vpn?: { state?: string; active_node_name?: string };

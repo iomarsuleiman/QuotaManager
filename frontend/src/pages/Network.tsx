@@ -142,6 +142,7 @@ function GuestCard({ g }: { g: Guest }) {
 function MacList({ kind, list }: { kind: "allow" | "deny"; list: string[] }) {
   const d = useDashboard();
   const { run, pending } = useNetAction();
+  const [suggest, setSuggest] = useState(false);
   const [v, setV] = useState(""), [err, setErr] = useState<string | null>(null), [del, setDel] = useState<string | null>(null);
   const known = new Map(d ? allDevices(d.users).map((x) => [x.mac.toLowerCase(), `${x.name || x.mac} · ${x.owner}`]) : []);
   const add = async () => {
@@ -153,10 +154,19 @@ function MacList({ kind, list }: { kind: "allow" | "deny"; list: string[] }) {
   return (
     <Card className="col-span-12 lg:col-span-6" title={t("n." + kind)} sub={t("n." + kind + ".d")} actions={<Badge icon={false}>{num(list.length, 0)}</Badge>}>
       <form className="flex items-start gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
-        <TextField className="flex-1" label={<span className="qm-sr">{t("n.mac.add")}</span>} hint={!err ? t("add.mac.hint") : undefined} value={v} onChange={(x) => { setV(x); setErr(null); }} placeholder="aa:bb:cc:dd:ee:ff" mono error={err} list="qm-known-macs" />
+        <div className="relative min-w-0 flex-1" onFocus={() => setSuggest(true)} onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSuggest(false); }}>
+          <TextField label={<span className="qm-sr">{t("n.mac.add")}</span>} hint={!err ? t("add.mac.hint") : undefined} value={v} onChange={(x) => { setV(x); setErr(null); }} placeholder="aa:bb:cc:dd:ee:ff" mono error={err} autoComplete="off" />
+          {suggest && [...known].some(([m, n]) => !list.includes(m) && `${m} ${n}`.toLowerCase().includes(v.toLowerCase())) && (
+            <div className="absolute start-0 top-12 z-20 max-h-48 w-full overflow-y-auto rounded-md border border-line bg-raised p-1 shadow-raised" aria-label={t("f.choose")}>
+              {[...known].filter(([m, n]) => !list.includes(m) && `${m} ${n}`.toLowerCase().includes(v.toLowerCase())).map(([m, n]) => (
+                <button key={m} type="button" className="flex w-full flex-col rounded-[6px] px-2.5 py-2 text-start text-[13px] text-fg hover:bg-canvas focus:bg-canvas"
+                  onClick={() => { setV(m); setErr(null); setSuggest(false); }}><span>{n}</span><span className="qm-ltr font-mono text-[12px] text-fg-3">{mask(m)}</span></button>
+              ))}
+            </div>
+          )}
+        </div>
         <Button type="submit" icon="plus" pending={pending === "add"}>{t("n.mac.add")}</Button>
       </form>
-      <datalist id="qm-known-macs">{[...known].map(([m, n]) => <option key={m} value={m}>{n}</option>)}</datalist>
       {!list.length ? <p className="mt-3 text-[12.5px] text-fg-3">{t("n.mac.none." + kind)}</p> : (
         <ul className="mt-3 divide-y divide-line">
           {list.map((m) => (

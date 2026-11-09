@@ -14,6 +14,8 @@ Added:
 - Every empty list now has a small illustration, a short explanation and the next step.
 
 Changed:
+- Dashboard choice menus and scrollbars now follow the selected theme, with keyboard-friendly menus and matching device-address suggestions.
+- The redesigned dashboard now includes the option to open internet access when everyone runs out of quota, with a clear status while it is active.
 - A redesigned dashboard: calm neutral colours in light and dark, one quiet accent, and colour used only where it means something (online, warning, blocked). The moving background and glows are gone, so the panel is lighter on the gateway laptop.
 - The Overview answers three questions first: is the internet working, how much is left (with the reset date and the pace), and what needs your attention.
 - People is now a proper list: search, filters with counts, sorting, "Clear filters", and selecting several people to block or restore them together (it always shows who will be affected before doing it).
@@ -28,6 +30,21 @@ Changed:
 - Arabic: new and reworded text in plain, natural Egyptian Arabic.
 - Internet, Security, VPN, Share and System (account, updates, logs) use the same new design: numbers with units and limits, checked addresses and ports, search and "Clear filters" on rules and logs, and a clear warning before switching the line mode, renewing the IP, applying the firewall, turning off ad blocking, disconnecting the VPN or installing an update.
 - "VPN nodes" are now called "VPN servers".
+
+## [0.5.4] — 2026-11-08
+
+Added:
+- Fedora (.rpm), Arch / Manjaro (.pkg.tar.zst) and a generic tarball with `install.sh` for any systemd distro, built on every release next to the .deb. The updater installs the right file for how the box was set up (issue #15). Debian behaviour is unchanged. Fedora/Arch/tarball are new in this release and have only been tested in containers so far - please report anything odd on a real box.
+- When everyone runs out of quota and nobody has an add-on pack, the internet now opens for all instead of staying cut (the speed is poor anyway, but better than nothing). It is on by default; you can switch it off under Quota > Open when everyone is out.
+- The moment an add-on pack, a top-up or a bigger bundle adds GB, the box closes again for the people who are out. What was used while it was open is not deducted from the new GB.
+- /share and /milestone have an Arabic / English switch (remembered per browser).
+- /share: a Cancel button for uploads in progress (files and folders). A cancelled upload leaves nothing half-written on the box.
+
+Fixed:
+- OpenWrt 25.12+: the install steps used `opkg`, which that release no longer has (it uses `apk`). There is now `scripts/install_openwrt.sh` that detects `apk` or `opkg` and sets everything up (experimental; x86_64/aarch64 recommended).
+- In "Daily plan", the disabled "split the rest over the days" option now says why (it needs a reset day) right next to it.
+- In a person's card, the allowance section no longer repeats the word "Allowance" twice.
+- The update check no longer hides the "What's new" button just after a release, while GitHub still serves the old changelog.
 
 ## [0.5.3] — 2026-11-06
 

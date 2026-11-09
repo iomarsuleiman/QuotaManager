@@ -58,7 +58,7 @@ export function DailySection({ u, dash, onDirty }: { u: User; dash: Dashboard; o
     <section className="flex flex-col gap-3 border-b border-line py-4" aria-label={t("dq.title")}>
       <div className="flex items-center justify-between">{head}{dirty && <Badge tone="warning" icon={false}>{t("sheet.unsaved")}</Badge>}</div>
       <DailyToday u={u} />
-      <Segmented label={t("dq.mode")} value={mode} onChange={setMode} options={[{ value: "off", label: t("dq.mode.off") }, { value: "fixed", label: t("dq.mode.fixed") }, { value: "spread", label: t("dq.mode.spread"), disabled: !hasEnd }]} />
+      <Segmented label={t("dq.mode")} value={mode} onChange={setMode} options={[{ value: "off", label: t("dq.mode.off") }, { value: "fixed", label: t("dq.mode.fixed") }, { value: "spread", label: hasEnd ? t("dq.mode.spread") : `${t("dq.mode.spread")} (${t("dq.mode.spread.need")})`, disabled: !hasEnd }]} />
       <p className="text-[12px] text-fg-3">{t("dq.mode." + mode + ".d")}{!hasEnd ? ` ${t("dq.mode.spread.no")}` : ""}</p>
       {mode !== "off" && <>
         {mode === "fixed" && <NumberField label={t("dq.gb")} value={dgb} onValue={setDgb} unit={t("common.gb")} spec={{ min: 0, max: 100000, decimals: 2 }} stepper />}

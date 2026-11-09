@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type Input
 import * as SwitchP from "@radix-ui/react-switch";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import * as Popover from "@radix-ui/react-popover";
+import * as Menu from "@radix-ui/react-dropdown-menu";
 import clsx from "clsx";
 import { Icon } from "./Icon";
 import { t, num, getLang } from "../../lib/i18n";
@@ -155,18 +156,37 @@ export function Segmented<T extends string>({ value, onChange, options, label, s
     </ToggleGroup.Root>
   );
 }
-/** Short fixed list: a styled native select keeps the OS picker (best on phones and with screen readers). */
+/** Themed fixed choices with keyboard navigation, typeahead and focus restoration. */
 export function Select<T extends string>({ label, hint, error, value, onChange, options, className, disabled }: { label: ReactNode; hint?: ReactNode; error?: string | null; value: T; onChange: (v: T) => void; options: { value: T; label: string; disabled?: boolean }[]; className?: string; disabled?: boolean }) {
   return (
     <Field label={label} hint={hint} error={error} className={className}>
       {({ id, describedBy, invalid }) => (
-        <div className="relative">
-          <select id={id} aria-describedby={describedBy} aria-invalid={invalid} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as T)}
-            className={clsx(ctl, "appearance-none pe-9")}>
-            {options.map((o) => <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>)}
-          </select>
-          <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-fg-3"><Icon name="chev" size={15} className="rotate-90" /></span>
-        </div>
+        <Menu.Root dir={getLang() === "ar" ? "rtl" : "ltr"}>
+          <Menu.Trigger asChild>
+            <button type="button" id={id} aria-describedby={describedBy} aria-invalid={invalid} disabled={disabled}
+              className={clsx(ctl, "flex items-center justify-between gap-3 text-start")}>
+              <span className="truncate">{options.find((o) => o.value === value)?.label || t("f.choose")}</span>
+              <Icon name="chev" size={15} className="shrink-0 rotate-90 text-fg-3" />
+            </button>
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Content align="start" sideOffset={4} collisionPadding={8}
+              className="qm-pop z-[90] max-h-[min(320px,var(--radix-dropdown-menu-content-available-height))] w-[var(--radix-dropdown-menu-trigger-width)] min-w-40 overflow-y-auto overscroll-contain rounded-md border border-line bg-raised p-1 shadow-raised">
+              <Menu.RadioGroup value={value} onValueChange={(next) => {
+                const option = options.find((o) => o.value === next && !o.disabled);
+                if (option) onChange(option.value);
+              }}>
+                {options.map((o) => (
+                  <Menu.RadioItem key={o.value} value={o.value} disabled={o.disabled}
+                    className="flex min-h-9 cursor-pointer items-center justify-between gap-3 rounded-[6px] px-2.5 py-2 text-[13px] text-fg outline-none data-[highlighted]:bg-canvas data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-45 max-md:min-h-11">
+                    <span>{o.label}</span>
+                    <Menu.ItemIndicator><Icon name="check" size={15} className="text-accent-fg" /></Menu.ItemIndicator>
+                  </Menu.RadioItem>
+                ))}
+              </Menu.RadioGroup>
+            </Menu.Content>
+          </Menu.Portal>
+        </Menu.Root>
       )}
     </Field>
   );
