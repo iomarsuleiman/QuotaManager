@@ -35,6 +35,16 @@ Changed:
 - Internet, Security, VPN, Share and System (account, updates, logs) use the same new design: numbers with units and limits, checked addresses and ports, search and "Clear filters" on rules and logs, and a clear warning before switching the line mode, renewing the IP, applying the firewall, turning off ad blocking, disconnecting the VPN or installing an update.
 - "VPN nodes" are now called "VPN servers".
 
+## [0.5.5] — 2026-11-09
+
+Added:
+- A device that sets its own (static) IP is now cut off automatically. Before, it only showed under "Unmanaged devices" and kept its internet. It stays cut until you act on it, from the People page > Unmanaged devices:
+  - **Manage** adds it as a normal device that keeps its IP (it starts at 0 GB, so give it an allowance to connect it). It is then counted and controlled per person like everyone else.
+  - **Allow** lets it keep its internet without managing it.
+  - A switch there turns the automatic cut-off off.
+- The cut takes up to about 1.5 minutes after the device appears (the network is scanned every minute).
+- Heads-up: any device you set up with its own fixed IP (printer, camera, NAS...) is cut after this update until you press **Allow** (or **Manage**) on it in People > Unmanaged devices.
+
 ## [0.5.4] — 2026-11-08
 
 Added:

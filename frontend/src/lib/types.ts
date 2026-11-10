@@ -22,9 +22,9 @@ export interface Bundle {
   base_total_gb: number; total_gb: number; used_gb: number; remaining_gb: number; reset_day: number;
   period_type: "renew_day" | "end_of_month" | "manual"; period_start: string | null; period_end: string | null; days_left: number; recharges: Recharge[];
 }
-export interface Rogue { mac?: string; ip?: string; vendor?: string; online?: boolean }
+export interface Rogue { mac?: string; ip?: string; vendor?: string; online?: boolean; blocked?: boolean; allowed?: boolean }
 export interface Dashboard {
-  bundle: Bundle; daily_enabled: boolean; free_mode: boolean; free_mode_enabled: boolean; users: User[]; devices?: Device[]; rogue: Rogue[];
+  bundle: Bundle; daily_enabled: boolean; free_mode: boolean; free_mode_enabled: boolean; users: User[]; devices?: Device[]; rogue: Rogue[]; unmanaged_block?: boolean;
   gateway?: { blocked_desired?: boolean; blocked_programmed?: boolean };
   vpn_share?: { enabled?: boolean; interface?: string; status?: { state?: string; interface?: string } };
   vpn?: { state?: string; active_node_name?: string };

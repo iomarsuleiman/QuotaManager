@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import clsx from "clsx";
+import { api } from "../lib/api";
 import { useDashboard } from "../lib/session";
 import { useLiveTraffic } from "../lib/queries";
 import { usePrefs, setPref } from "../lib/prefs";
@@ -8,7 +9,7 @@ import { t, tf, num, iso, mask } from "../lib/i18n";
 import { gb, userStatus, deviceStatus, devIcon, fmtBps } from "../lib/format";
 import type { User } from "../lib/types";
 import { Badge, Button, Card, Empty, Loading, Meter, IconButton, Term } from "../components/ui/primitives";
-import { Segmented, Select, controlClass } from "../components/ui/forms";
+import { Segmented, Select, SwitchRow, controlClass } from "../components/ui/forms";
 import { Checkbox } from "../components/ui/checkbox";
 import { ConfirmDialog, useToast } from "../components/ui/overlays";
 import { MoreMenu } from "../components/ui/menu";
@@ -39,7 +40,7 @@ export default function People() {
   const [person, setPerson] = useState<number | null>(null), [device, setDevice] = useState<{ u: number; d: number } | null>(null);
   const [add, setAdd] = useState<null | "person" | "device">(null);
   const [bulk, setBulk] = useState<null | "block" | "unblock">(null);
-  const { run } = useAction();
+  const { run, pending } = useAction();
 
   const all = useMemo(() => (d?.users || []).map((u, i) => [u, i] as const).sort((a, b) => (+b[0].protected - +a[0].protected) || a[1] - b[1]).map((x) => x[0]), [d]);
   const rows = useMemo(() => {
@@ -164,14 +165,18 @@ export default function People() {
         )}
       </Card>
 
-      {(d.rogue || []).length > 0 && (
+      {((d.rogue || []).length > 0 || d.unmanaged_block === false) && (
         <Card title={<Term k="rogue">{t("pp.rogue")}</Term>} sub={t("pp.rogue.d")} actions={<Badge tone="warning">{num(d.rogue.length, 0)}</Badge>}>
+          <SwitchRow title={t("pp.rogue.sw")} desc={t("pp.rogue.sw.d")} checked={d.unmanaged_block !== false} pending={pending === "unmanaged-policy"} disabled={pending !== null}
+            onChange={(enabled) => { void run("unmanaged-policy", () => api.post("/api/unmanaged-policy", { enabled }), t("act.applied")); }} />
           <ul className="divide-y divide-line">
             {d.rogue.map((r, i) => (
               <li key={(r.mac || "") + i} className="flex flex-wrap items-center gap-3 py-2.5">
                 <Icon name="alert" size={16} className="text-warning" />
                 <span className="min-w-0 flex-1"><b className="qm-ltr block font-mono text-[13px] text-fg">{r.ip ? iso(r.ip) : "—"}</b><span className="qm-ltr font-mono text-[11.5px] text-fg-3">{[mask(r.mac || ""), r.vendor && r.vendor !== "Unknown" ? r.vendor : ""].filter(Boolean).join(" · ")}</span></span>
-                <Badge tone={r.online ? "success" : "neutral"}>{r.online ? t("pp.st.online") : t("pp.st.offline")}</Badge>
+                <Badge tone={r.blocked ? "danger" : r.allowed ? "success" : "warning"}>{t(r.blocked ? "pp.rogue.cut" : r.allowed ? "pp.rogue.allowed" : "pp.rogue.open")}</Badge>
+                <Button size="sm" variant="primary" disabled={pending !== null} onClick={() => { void run("adopt-" + r.mac, () => api.post("/api/rogue/adopt", { mac: r.mac, ip: r.ip }), t("pp.rogue.adopted")); }}>{t("pp.rogue.manage")}</Button>
+                {!r.allowed && <Button size="sm" disabled={pending !== null} onClick={() => { void run("allow-" + r.mac, () => api.post("/api/rogue/allow", { mac: r.mac }), t("pp.rogue.allowed.done")); }}>{t("pp.rogue.allow")}</Button>}
               </li>
             ))}
           </ul>
