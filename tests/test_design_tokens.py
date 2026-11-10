@@ -9,11 +9,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-# The preview palette is isolated until the production dashboard switch.
-TOKENS = ROOT / "frontend" / "public" / "react-tokens.css"
-if not TOKENS.exists():
-    TOKENS = ROOT / "web" / "css" / "tokens.css"
+TOKENS = Path(__file__).resolve().parent.parent / "web" / "css" / "tokens.css"
 
 
 def _blocks() -> dict[str, dict[str, str]]:
