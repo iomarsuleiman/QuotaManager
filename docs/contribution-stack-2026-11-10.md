@@ -2,9 +2,9 @@
 
 The fork main branch and all 12 contribution branches include upstream 0.5.5 at `67b598edd39de2bb36febed3eff02cc1951a17e3`. The fork preserves the React dashboard and upstream unmanaged fixed-IP device controls.
 
-## Pull requests and order
+## Current status and historical PR inventory
 
-All 12 contributions are submitted upstream as non-draft PRs ready for review. The 11 fork PRs are also non-draft and retain focused diffs against their preceding contribution branches.
+Only [upstream passkey API PR #17](https://github.com/UserJoo9/QuotaManager/pull/17) remains open for review. At the owner's request, upstream #18?#28 and fork #2?#12 were closed to keep the review focused. Their branches and code are preserved. The table below is the historical contribution inventory.
 
 Upstream PRs target `main` because this account cannot create base branches in the upstream repository. Their Files changed views include earlier contributions until those dependencies land. Each upstream description links its predecessor, focused comparison and fork review. Review the focused delta and land the series in order. Ready for review does not mean dependencies or maintainer approval can be skipped.
 
@@ -51,4 +51,4 @@ Physical gateway forwarding, VPN connectivity, package installation and real bio
 
 ## Publishing
 
-The connected GitHub integration rejected upstream PR creation with HTTP 403. The authenticated GitHub CLI successfully opened upstream PRs #17 through #28. All upstream contributions and fork reviews are non-draft. No upstream PR was merged, no official release was published, and no existing release tag was changed or pushed.
+The connected GitHub integration rejected upstream PR creation with HTTP 403. The authenticated GitHub CLI successfully opened upstream PRs #17 through #28. Only the passkey API PR remains open; the other upstream and fork PRs were subsequently closed at the owner's request. No upstream PR was merged, no official release was published, and no existing release tag was changed or pushed.
